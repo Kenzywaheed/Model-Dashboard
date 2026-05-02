@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Model Dashboard - University Presentation</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #f1f5f9 100%);
+      --bg-secondary: rgba(255,255,255,0.9);
+      --text-primary: #1e293b;
+      --text-secondary: #64748b;
+      --accent: linear-gradient(135deg, #6366f1, #8b5cf6);
+      --success: #10b981;
+      --warning: #fbbf24;
+      --shadow: 0 25px 50px -12px rgba(0,0,0,0.1);
+      --border: rgba(255,255,255,0.8);
+      --glass: rgba(255,255,255,0.6) backdrop-filter: blur(20px);
+    }
+    .dark {
+      --bg-primary: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+      --bg-secondary: rgba(30,41,55,0.9);
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --shadow: 0 25px 50px -12px rgba(0,0,0,0.4);
+      --border: rgba(255,255,255,0.1);
+      --glass: rgba(30,41,55,0.8) backdrop-filter: blur(20px);
+    }
+    * {margin:0;padding:0;box-sizing:border-box;}
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+    .container {display:flex;min-height:100vh;}
+    .sidebar {
+      width:280px;
+      background: var(--bg-secondary);
+      backdrop-filter: blur(20px);
+      box-shadow: var(--shadow);
+      position: fixed;
+      height: 100vh;
+      z-index: 1000;
+      transform: translateX(-100%);
+      transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
+      border-right: 1px solid var(--border);
+    }
+    .sidebar.open {transform: translateX(0);}
+    .sidebar-header {padding: 40px 28px 0; border-bottom: 1px solid var(--border);}
+    .logo {
+      font-size: 28px;
+      font-weight: 800;
+      background: var(--accent);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .nav-item {
+      display: block;
+      padding: 18px 28px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-weight: 500;
+      border-radius: 16px;
+      margin: 4px 12px;
+      transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    .nav-item:hover {background: rgba(99,102,241,0.1); color: var(--text-primary); transform: translateX(4px);}
+    .nav-item.active {
+      background: var(--accent);
+      color: white;
+      box-shadow: var(--shadow);
+    }
+    .nav-icon {display: inline-block; width:24px; margin-right: 16px; font-size:20px;}
+    .toggle-section {
+      position: absolute;
+      bottom: 40px;
+      left: 28px;
+      right: 28px;
+      padding: 24px;
+      border-radius: 20px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--glass);
+      transition: all 0.3s ease;
+      backdrop-filter: blur(20px);
+    }
+    .toggle-section:hover {box-shadow: var(--shadow);}
+    .toggle-row {display:flex; align-items:center; justify-content: space-between;}
+    .switch {
+      width: 56px; height: 30px; background: var(--text-secondary); border-radius: 15px;
+      position: relative; cursor: pointer; transition: background 0.3s ease;
+    }
+    .switch.active {background: var(--accent);}
+    .knob {
+      position: absolute; top: 2px; left: 2px; width: 26px; height: 26px;
+      background: white; border-radius: 13px; transition: transform 0.3s ease;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    .switch.active .knob {transform: translateX(26px);}
+    .overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+      opacity: 0; visibility: hidden; transition: all 0.3s ease; z-index: 999;
+      backdrop-filter: blur(4px);
+    }
+    .sidebar.open ~ .overlay {opacity:1; visibility: visible;}
+    .main {
+      flex: 1; margin-left: 0; padding: 48px; transition: margin-left 0.4s ease;
+    }
+    @media (min-width: 1200px) {
+      .sidebar {transform: translateX(0);}
+      .main {margin-left: 280px; padding: 64px;}
+    }
+    @media (max-width: 1199px) {
+      .main {padding: 32px;}
+    }
+    .card {
+      background: var(--bg-secondary);
+      border-radius: 24px;
+      padding: 48px;
+      margin-bottom: 36px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+      backdrop-filter: blur(20px);
+    }
+    .card:hover {box-shadow: 0 40px 80px -20px rgba(0,0,0,0.15);}
+    .page-title {
+      font-size: 40px; font-weight: 800; margin-bottom: 40px;
+      background: var(--accent); -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .metric-grid {display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 36px; margin-bottom: 56px;}
+    .metric {text-align: center;}
+    .metric-subtitle {font-size: 18px; opacity: 0.8; margin-bottom: 12px; font-weight: 500;}
+    .metric-value {
+      font-size: 64px; font-weight: 900; margin-bottom: 16px;
+      background: var(--accent); -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent; line-height: 1;
+    }
+    .metric-change {font-size: 22px; font-weight: 700; color: var(--success);}
+    .chart-container {
+      height: 200px; margin-top: 36px; position: relative;
+    }
+    .reviews-chart {height: 240px;}
+    .brands-grid {display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 28px;}
+    .brand-item {
+      display: flex; align-items: center; padding: 32px;
+      background: rgba(255,255,255,0.4); border-radius: 20px; border: 1px solid var(--border);
+      cursor: pointer; transition: all 0.3s ease; backdrop-filter: blur(10px);
+    }
+    .brand-item:hover {background: rgba(255,255,255,0.6); transform: translateY(-4px);}
+    .brand-logo {
+      width: 72px; height: 72px; border-radius: 20px; margin-right: 28px;
+      background: var(--accent); display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 22px; color: white; box-shadow: var(--shadow);
+    }
+    .brand-name {font-size: 22px; font-weight: 800; margin-bottom: 8px;}
+    .stars {font-size: 24px; color: var(--warning);}
+    .request-grid {display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 32px;}
+    .request-card {
+      display: flex; justify-content: space-between; align-items: center; padding: 40px;
+      background: rgba(255,255,255,0.4); border-radius: 24px; border: 1px solid var(--border);
+      box-shadow: var(--shadow); transition: all 0.3s ease; backdrop-filter: blur(10px);
+    }
+    .request-card:hover {transform: translateY(-4px);}
+    .request-left {display: flex; align-items: center;}
+    .request-logo {
+      width: 80px; height: 80px; border-radius: 20px; margin-right: 32px;
+      background: linear-gradient(135deg, var(--success), #059669); display: flex; align-items: center;
+      justify-content: center; font-weight: 900; font-size: 24px; color: white;
+    }
+    .request-title {font-size: 24px; font-weight: 800; margin-bottom: 8px;}
+    .request-stars {font-size: 24px; color: var(--warning);}
+    .btn-group {display: flex; gap: 16px;}
+    .btn {
+      padding: 16px 36px; border: none; border-radius: 24px; font-weight: 700; font-size: 16px;
+      cursor: pointer; transition: all 0.3s ease; box-shadow: var(--shadow); min-width: 128px;
+    }
+    .btn-accept {background: linear-gradient(135deg, var(--success), #059669); color: white;}
+    .btn-reject {background: linear-gradient(135deg, #ef4444, #dc2626); color: white;}
+    .btn:hover {transform: translateY(-2px); box-shadow: 0 32px 64px -16px rgba(0,0,0,0.2);}
+    .chat-grid {display: grid; grid-template-columns: 80px 2fr 3fr auto; gap: 24px; align-items: center;}
+    .chat-header {
+      grid-template-columns: 80px 2fr 3fr auto; padding: 24px 36px; background: rgba(255,255,255,0.4);
+      border-radius: 20px; margin-bottom: 20px; font-weight: 600; font-size: 15px; backdrop-filter: blur(10px);
+    }
+    .chat-row {
+      grid-template-columns: 80px 2fr 3fr auto; padding: 32px 36px; background: rgba(255,255,255,0.3);
+      border-radius: 20px; cursor: pointer; transition: all 0.3s ease; align-items: center; backdrop-filter: blur(10px);
+    }
+    .chat-row:hover {background: rgba(255,255,255,0.5);}
+    .chat-avatar {
+      width: 64px; height: 64px; border-radius: 18px; background: var(--accent); color: white;
+      font-weight: 800; font-size: 20px; display: flex; align-items: center; justify-content: center;
+    }
+    .chat-user {font-weight: 700; font-size: 17px;}
+    .chat-message {opacity: 0.9; font-size: 15px;}
+    .chat-time {font-family: 'SF Mono', monospace; font-size: 14px; opacity: 0.8;}
+    .calendar-container {display: grid; grid-template-columns: 1fr 420px; gap: 48px;}
+    .events-list {display: flex; flex-direction: column; gap: 24px;}
+    .event-item {
+      padding: 36px; background: rgba(16,185,129,0.15); border-radius: 24px; border-left: 6px solid var(--success);
+      transition: all 0.3s ease; cursor: pointer; backdrop-filter: blur(10px);
+    }
+    .event-item:hover {box-shadow: var(--shadow); transform: translateX(8px);}
+    .event-row {display: flex; align-items: center; gap: 24px;}
+    .event-time {
+      font-family: 'SF Mono', monospace; font-size: 22px; font-weight: 800; width: 80px;
+      background: rgba(16,185,129,0.2); padding: 8px 16px; border-radius: 12px; text-align: center;
+    }
+    .event-title {font-size: 20px; font-weight: 600;}
+    .calendar-wrapper {
+      background: rgba(255,255,255,0.4); border-radius: 28px; padding: 40px; backdrop-filter: blur(20px);
+    }
+    .calendar-header-row {
+      display: grid; grid-template-columns: repeat(7,1fr); gap: 12px; margin-bottom: 24px;
+      font-weight: 600; font-size: 16px; text-align: center; opacity: 0.8;
+    }
+    .calendar-days {display: grid; grid-template-columns: repeat(7,1fr); gap: 12px;}
+    .calendar-day {
+      aspect-ratio: 1; border-radius: 16px; display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 18px; cursor: pointer; transition: all 0.3s ease; border: 2px solid transparent;
+    }
+    .calendar-day:hover {background: rgba(99,102,241,0.2); transform: scale(1.05);}
+    .calendar-day.today {background: var(--accent); color: white; box-shadow: var(--shadow);}
+    .location-section {
+      margin-top: 36px; padding: 40px; background: rgba(255,255,255,0.4); border-radius: 24px;
+      text-align: center; backdrop-filter: blur(20px);
+    }
+    .location-icon {font-size: 72px; margin-bottom: 20px; opacity: 0.8;}
+    .profile-section {max-width: 900px; margin: 0 auto; text-align: center;}
+    .profile-avatar {
+      width: 180px; height: 180px; border-radius: 50%; margin: 0 auto 48px;
+      background: var(--accent); display: flex; align-items: center; justify-content: center;
+      font-size: 56px; font-weight: 900; color: white; box-shadow: 0 40px 80px rgba(99,102,241,0.4);
+    }
+    .profile-name {font-size: 48px; font-weight: 900; margin-bottom: 28px;}
+    .profile-rating {font-size: 36px; color: var(--warning); margin-bottom: 64px; font-weight: 800;}
+    .feature-grid {display: grid; grid-template-columns: repeat(auto-fit,minmax(320px,1fr)); gap: 44px;}
+    .feature-card {
+      padding: 52px 44px; background: rgba(255,255,255,0.4); border-radius: 28px; border: 1px solid var(--border);
+      text-align: center; cursor: pointer; transition: all 0.3s ease; backdrop-filter: blur(20px);
+    }
+    .feature-card:hover {transform: translateY(-12px) scale(1.02); box-shadow: 0 48px 96px -24px rgba(0,0,0,0.2);}
+    .feature-icon {font-size: 80px; margin-bottom: 32px; opacity: 0.9;}
+    .feature-title {font-size: 26px; font-weight: 800;}
+    .page {display: none;}
+    .page.active {display: block; animation: fadeIn 0.5s ease;}
+    @keyframes fadeIn {from {opacity: 0; transform: translateY(20px);} to {opacity: 1; transform: translateY(0px);}}
+    @media (max-width: 1199px) {.metric-grid, .feature-grid, .calendar-container {grid-template-columns: 1fr;}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <h1 class="logo">Model Dashboard</h1>
+      </div>
+      <div class="nav">
+        <a href="#" data-page="0" class="nav-item active">
+          <span class="nav-icon">📊</span>Dashboard
+        </a>
+        <a href="#" data-page="1" class="nav-item">
+          <span class="nav-icon">📋</span>Order Request
+        </a>
+        <a href="#" data-page="2" class="nav-item">
+          <span class="nav-icon">💬</span>Chats
+        </a>
+        <a href="#" data-page="3" class="nav-item">
+          <span class="nav-icon">📅</span>Calendar
+        </a>
+        <a href="#" data-page="4" class="nav-item">
+          <span class="nav-icon">👤</span>Profile
+        </a>
+      </div>
+      <div class="toggle-section" id="toggle">
+        <div class="toggle-row">
+          <div>
+            <span id="toggle-icon" class="toggle-icon">🌙</span>
+            <span>Dark Mode</span>
+          </div>
+          <div id="switch" class="switch">
+            <div class="knob"></div>
+          </div>
+        </div>
+      </div>
+    </nav>
+    <div id="overlay" class="overlay"></div>
+    <main class="main">
+      <!-- DASHBOARD -->
+      <section class="page active" data-page="0">
+        <div class="metric-grid">
+          <div class="card">
+            <div class="metric">
+              <div class="metric-subtitle">Today Order</div>
+              <div class="metric-value">16.5K</div>
+              <div class="metric-change">↑6% vs last day</div>
+              <canvas id="ordersChart" class="chart-container" width="800" height="200"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <div class="metric">
+              <div class="metric-subtitle">Total Orders (Last 7 days)</div>
+              <div class="metric-value">25.7K</div>
+              <div class="metric-change">↑6% vs last 7 days</div>
+              <canvas id="totalChart" class="chart-container" width="400" height="200"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <h2 class="page-title">Local Brands</h2>
+          <div class="brands-grid">
+            <div class="brand-item">
+              <div class="brand-logo">BM</div>
+              <div>
+                <div class="brand-name">Be More</div>
+                <div class="stars">⭐⭐⭐⭐</div>
+              </div>
+            </div>
+            <div class="brand-item">
+              <div class="brand-logo">A</div>
+              <div>
+                <div class="brand-name">Avelle</div>
+                <div class="stars">⭐⭐⭐</div>
+              </div>
+            </div>
+            <div class="brand-item">
+              <div class="brand-logo">S</div>
+              <div>
+                <div class="brand-name">Spark</div>
+                <div class="stars">⭐⭐⭐⭐</div>
+              </div>
+            </div>
+            <div class="brand-item">
+              <div class="brand-logo">R</div>
+              <div>
+                <div class="brand-name">Ruhdies</div>
+                <div class="stars">⭐⭐⭐⭐</div>
+              </div>
+            </div>
+            <div class="brand-item">
+              <div class="brand-logo">J</div>
+              <div>
+                <div class="brand-name">Juvo</div>
+                <div class="stars">⭐⭐⭐⭐⭐</div>
+              </div>
+            </div>
+            <div class="brand-item">
+              <div class="brand-logo">G</div>
+              <div>
+                <div class="brand-name">Groomi</div>
+                <div class="stars">⭐⭐⭐⭐</div>
+              </div>
+            </div>
+            <div class="brand-item">
+              <div class="brand-logo">C</div>
+              <div>
+                <div class="brand-name">CFB</div>
+                <div class="stars">⭐⭐⭐</div>
+              </div>
+            </div>
+            <div class="brand-item">
+              <div class="brand-logo">M</div>
+              <div>
+                <div class="brand-name">Milvus.co</div>
+                <div class="stars">⭐⭐⭐⭐</div>
+              </div>
+            </div>
+            <div class="brand-item">
+              <div class="brand-logo">AS</div>
+              <div>
+                <div class="brand-name">atypicalstudios</div>
+                <div class="stars">⭐⭐⭐⭐</div>
+              </div>
+            </div>
+            <div class="brand-item">
+              <div class="brand-logo">Y</div>
+              <div>
+                <div class="brand-name">Yours</div>
+                <div class="stars">⭐⭐⭐⭐</div>
+              </div>
+            </div>
+            <div class="brand-item">
+              <div class="brand-logo">TS</div>
+              <div>
+                <div class="brand-name">TAJ SISTERS</div>
+                <div class="stars">⭐⭐⭐⭐</div>
+              </div>
+            </div>
+            <div class="brand-item">
+              <div class="brand-logo">F</div>
+              <div>
+                <div class="brand-name">Fragile</div>
+                <div class="stars">⭐⭐⭐</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <h2 class="page-title">Reviews</h2>
+          <canvas id="reviewsChart" class="chart-container reviews-chart" width="800" height="240"></canvas>
+        </div>
+      </section>
+
+      <!-- ORDER REQUEST -->
+      <section class="page" data-page="1">
+        <div class="card">
+          <h2 class="page-title">Order Request</h2>
+          <div class="request-grid">
+            <div class="request-card">
+              <div class="request-left">
+                <div class="request-logo">BM</div>
+                <div>
+                  <div class="request-title">Be More</div>
+                  <div class="request-stars">⭐⭐⭐⭐</div>
+                </div>
+              </div>
+              <div class="btn-group">
+                <button class="btn btn-accept">Accept</button>
+                <button class="btn btn-reject">Reject</button>
+              </div>
+            </div>
+            <div class="request-card">
+              <div class="request-left">
+                <div class="request-logo">BM</div>
+                <div>
+                  <div class="request-title">Be More</div>
+                  <div class="request-stars">⭐⭐⭐⭐</div>
+                </div>
+              </div>
+              <div class="btn-group">
+                <button class="btn btn-accept">Accept</button>
+                <button class="btn btn-reject">Reject</button>
+              </div>
+            </div>
+            <div class="request-card">
+              <div class="request-left">
+                <div class="request-logo">BM</div>
+                <div>
+                  <div class="request-title">Be More</div>
+                  <div class="request-stars">⭐⭐⭐⭐</div>
+                </div>
+              </div>
+              <div class="btn-group">
+                <button class="btn btn-accept">Accept</button>
+                <button class="btn btn-reject">Reject</button>
+              </div>
+            </div>
+            <div class="request-card">
+              <div class="request-left">
+                <div class="request-logo">BM</div>
+                <div>
+                  <div class="request-title">Be More</div>
+                  <div class="request-stars">⭐⭐⭐⭐</div>
+                </div>
+              </div>
+              <div class="btn-group">
+                <button class="btn btn-accept">Accept</button>
+                <button class="btn btn-reject">Reject</button>
+              </div>
+            </div>
+            <div class="request-card">
+              <div class="request-left">
+                <div class="request-logo">BM</div>
+                <div>
+                  <div class="request-title">Be More</div>
+                  <div class="request-stars">⭐⭐⭐⭐</div>
+                </div>
+              </div>
+              <div class="btn-group">
+                <button class="btn btn-accept">Accept</button>
+                <button class="btn btn-reject">Reject</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CHATS -->
+      <section class="page" data-page="2">
+        <div class="card">
+          <h2 class="page-title">Chats</h2>
+          <div class="chat-grid chat-header">
+            <span></span>
+            <span>User</span>
+            <span>Message</span>
+            <span>Time</span>
+          </div>
+          <div class="chat-grid chat-row">
+            <div class="chat-avatar">A</div>
+            <span class="chat-user">Anderson</span>
+            <span class="chat-message">Hello, Nice to meet you!</span>
+            <span class="chat-time">20:12</span>
+          </div>
+          <div class="chat-grid chat-row">
+            <div class="chat-avatar">L</div>
+            <span class="chat-user">Lewandowski</span>
+            <span class="chat-message">Thanks for your time.</span>
+            <span class="chat-time">20:01</span>
+          </div>
+          <div class="chat-grid chat-row">
+            <div class="chat-avatar">R</div>
+            <span class="chat-user">Rodrigo</span>
+            <span class="chat-message">Send invitation</span>
+            <span class="chat-time">19:12</span>
+          </div>
+          <div class="chat-grid chat-row">
+            <div class="chat-avatar">BA</div>
+            <span class="chat-user">Bambang Ave</span>
+            <span class="chat-message">yes this is same for...</span>
+            <span class="chat-time">18:10</span>
+          </div>
+          <div class="chat-grid chat-row">
+            <div class="chat-avatar">TP</div>
+            <span class="chat-user">Thomas Partey</span>
+            <span class="chat-message">okay I waiting for you...</span>
+            <span class="chat-time">18:12</span>
+          </div>
+          <div class="chat-grid chat-row">
+            <div class="chat-avatar">JS</div>
+            <span class="chat-user">Jajang S</span>
+            <span class="chat-message">take medication regularly</span>
+            <span class="chat-time">19:10</span>
+          </div>
+          <div class="chat-grid chat-row">
+            <div class="chat-avatar">R</div>
+            <span class="chat-user">Rodrigo</span>
+            <span class="chat-message">Send invitation</span>
+            <span class="chat-time">19:12</span>
+          </div>
+          <div class="chat-grid chat-row">
+            <div class="chat-avatar">BA</div>
+            <span class="chat-user">Bambang Ave</span>
+            <span class="chat-message">yes this is same for...</span>
+            <span class="chat-time">19:10</span>
+          </div>
+          <div class="chat-grid chat-row">
+            <div class="chat-avatar">TP</div>
+            <span class="chat-user">Thomas Partey</span>
+            <span class="chat-message">okay I waiting for you...</span>
+            <span class="chat-time">19:12</span>
+          </div>
+          <div class="chat-grid chat-row">
+            <div class="chat-avatar">JS</div>
+            <span class="chat-user">Jajang S</span>
+            <span class="chat-message">take medication regularly</span>
+            <span class="chat-time">19:10</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- CALENDAR -->
+      <section class="page" data-page="3">
+        <div class="card">
+          <h2 class="page-title">Calendar</h2>
+          <div class="calendar-container">
+            <div class="events-list">
+              <div class="event-item">
+                <div class="event-row">
+                  <div class="event-time">09:30</div>
+                  <span>Order Delivery</span>
+                </div>
+              </div>
+              <div class="event-item">
+                <div class="event-row">
+                  <div class="event-time">11:00</div>
+                  <span>Order Delivery</span>
+                </div>
+              </div>
+              <div class="event-item">
+                <div class="event-row">
+                  <div class="event-time">14:05</div>
+                  <span>Order Processing</span>
+                </div>
+              </div>
+              <div class="event-item">
+                <div class="event-row">
+                  <div class="event-time">15:45</div>
+                  <span>Order Delivery</span>
+                </div>
+              </div>
+              <div class="event-item">
+                <div class="event-row">
+                  <div class="event-time">16:00</div>
+                  <span>Order Processing</span>
+                </div>
+              </div>
+              <div class="event-item">
+                <div class="event-row">
+                  <div class="event-time">17:30</div>
+                  <span>Order Delivery</span>
+                </div>
+              </div>
+              <div class="event-item">
+                <div class="event-row">
+                  <div class="event-time">18:00</div>
+                  <span>Order Delivery</span>
+                </div>
+              </div>
+              <div class="event-item">
+                <div class="event-row">
+                  <div class="event-time">19:20</div>
+                  <span>Order Delivery</span>
+                </div>
+              </div>
+            </div>
+            <div class="calendar-wrapper">
+              <div class="calendar-header-row">
+                <div>MO</div><div>TU</div><div>WE</div><div>TH</div><div>FR</div><div>SA</div><div>SU</div>
+              </div>
+              <div class="calendar-days">
+                <div class="calendar-day">29</div><div class="calendar-day">30</div><div class="calendar-day">31</div>
+                <div class="calendar-day">1</div><div class="calendar-day">2</div><div class="calendar-day today">3</div><div class="calendar-day">4</div>
+                <div class="calendar-day">5</div><div class="calendar-day">6</div><div class="calendar-day">7</div><div class="calendar-day">8</div><div class="calendar-day">9</div><div class="calendar-day">10</div>
+                <div class="calendar-day">11</div><div class="calendar-day">12</div><div class="calendar-day">13</div><div class="calendar-day">14</div><div class="calendar-day">15</div><div class="calendar-day">16</div><div class="calendar-day">17</div>
+                <div class="calendar-day">18</div><div class="calendar-day">19</div><div class="calendar-day">20</div><div class="calendar-day">21</div><div class="calendar-day">22</div><div class="calendar-day">23</div><div class="calendar-day">24</div>
+                <div class="calendar-day">25</div><div class="calendar-day">26</div><div class="calendar-day">27</div><div class="calendar-day">28</div><div class="calendar-day">29</div><div class="calendar-day">30</div><div class="calendar-day">31</div>
+                <div class="calendar-day">1</div><div class="calendar-day">2</div>
+              </div>
+            </div>
+            <div class="location-section">
+              <div class="location-icon">📍</div>
+              <h3>Current Location</h3>
+              <p>University Campus Area</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PROFILE -->
+      <section class="page" data-page="4">
+        <div class="card">
+          <div class="profile-section">
+            <div class="profile-avatar">MP</div>
+            <h1>Melissa Peters</h1>
+            <div class="profile-rating">⭐⭐⭐⭐⭐ 4.9</div>
+            <div class="feature-grid">
+              <div class="feature-card">
+                <div class="feature-icon">🏪</div>
+                <h3>Local Brands</h3>
+              </div>
+              <div class="feature-card">
+                <div class="feature-icon">🛒</div>
+                <h3>Shop</h3>
+              </div>
+              <div class="feature-card">
+                <div class="feature-icon">🏪</div>
+                <h3>Local Brands</h3>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    // Core functionality
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
+    const navItems = document.querySelectorAll('.nav-item');
+    const pages = document.querySelectorAll('.page');
+    const toggle = document.getElementById('toggle');
+    const toggleIcon = document.getElementById('toggle-icon');
+    const switchBtn = document.getElementById('switch');
+    const knob = switchBtn.querySelector('.knob');
+    const body = document.body;
+    let isDark = localStorage.getItem('darkMode') === 'true';
+
+    function updateTheme() {
+      if (isDark) {
+        body.classList.add('dark');
+        toggleIcon.textContent = '☀️';
+        switchBtn.classList.add('active');
+        knob.style.transform = 'translateX(26px)';
+      } else {
+        body.classList.remove('dark');
+        toggleIcon.textContent = '🌙';
+        switchBtn.classList.remove('active');
+        knob.style.transform = 'translateX(0)';
+      }
+      localStorage.setItem('darkMode', isDark);
+      // Re-draw charts on theme change
+      drawCharts();
+    }
+
+    toggle.addEventListener('click', () => {
+      isDark = !isDark;
+      updateTheme();
+    });
+
+    // Load initial theme
+    updateTheme();
+
+    navItems.forEach((item, index) => {
+      item.addEventListener('click', (e) => {
+        e.preventDefault();
+        navItems.forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+        pages.forEach(p => p.classList.remove('active'));
+        pages[index].classList.add('active');
+        if (window.innerWidth < 1200) sidebar.classList.remove('open');
+      });
+    });
+
+    overlay.addEventListener('click', () => sidebar.classList.remove('open'));
+
+    window.addEventListener('resize', () => {
+      if (window.innerWidth >= 1200) sidebar.classList.add('open');
+      else sidebar.classList.remove('open');
+    });
+
+    if (window.innerWidth >= 1200) sidebar.classList.add('open');
+
+    // CHARTS - REAL DATA DRIVEN CANVAS
+    const ordersData = [245, 890, 2450, 1870];
+    const labels = ['12am', '8am', '4pm', '11pm'];
+    const reviewsData = [4,3,4,4,5,4];
+    const reviewCounts = {3:1, 4:4, 5:1};
+
+    function drawLineChart(canvasId, data, isEmerald = false) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * 2;
+      canvas.height = rect.height * 2;
+      ctx.scale(2, 2);
+      
+      const w = canvas.width / 2;
+      const h = canvas.height / 2;
+      const padding = 60;
+      const chartW = w - 2 * padding;
+      const chartH = h - padding * 1.5;
+      const max = Math.max(...data);
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Grid
+      ctx.strokeStyle = isDark ? 'rgba(148,163,184,0.2)' : 'rgba(148,163,184,0.3)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 4; i++) {
+        ctx.beginPath();
+        ctx.moveTo(padding, padding + (chartH / 4) * i);
+        ctx.lineTo(w - padding, padding + (chartH / 4) * i);
+        ctx.stroke();
+      }
+
+      const points = data.map((val, i) => ({
+        x: padding + i * (chartW / 3),
+        y: padding + chartH - (val / max) * chartH
+      }));
+
+      // Gradient fill (updates on dark toggle)
+      const gradientStart = isEmerald ? '#10b981' : (isDark ? '#a5b4fc' : '#6366f1');
+      const gradientFill = ctx.createLinearGradient(0, padding, 0, h);
+      gradientFill.addColorStop(0, gradientStart + (isDark ? '33' : '26'));
+      gradientFill.addColorStop(1, 'transparent');
+
+      // Area
+      ctx.fillStyle = gradientFill;
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) {
+        ctx.quadraticCurveTo(
+          points[i-1].x + (points[i].x - points[i-1].x)/2, 
+          points[i-1].y + (points[i].y - points[i-1].y)/2,
+          points[i].x, points[i].y
+        );
+      }
+      ctx.lineTo(points[points.length-1].x, h);
+      ctx.lineTo(points[0].x, h);
+      ctx.closePath();
+      ctx.fill();
+
+      // Line
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) {
+        ctx.quadraticCurveTo(
+          points[i-1].x + (points[i].x - points[i-1].x)/2, 
+          points[i-1].y + (points[i].y - points[i-1].y)/2,
+          points[i].x, points[i].y
+        );
+      }
+      ctx.strokeStyle = gradientStart;
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+
+      // Dots
+      points.forEach(point => {
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 6, 0, Math.PI * 2);
+        ctx.fillStyle = gradientStart;
+        ctx.fill();
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      });
+
+      // Labels
+      ctx.fillStyle = isDark ? '#94a3b8' : '#64748b';
+      ctx.font = 'bold 16px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      labels.forEach((label, i) => {
+        ctx.fillText(label, points[i].x, h - 30);
+      });
+    }
+
+    function drawReviewsChart() {
+      const canvas = document.getElementById('reviewsChart');
+      const ctx = canvas.getContext('2d');
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * 2;
+      canvas.height = rect.height * 2;
+      ctx.scale(2, 2);
+      
+      const w = canvas.width / 2;
+      const h = canvas.height / 2;
+      const padding = 80;
+      const barHeight = 50;
+      const barWidth = 300;
+      const gap = 40;
+      const labels = ['3 Stars', '4 Stars', '5 Stars'];
+      const counts = [1, 4, 1];
+      const maxCount = 4;
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Labels
+      ctx.fillStyle = isDark ? '#94a3b8' : '#64748b';
+      ctx.font = 'bold 18px Inter';
+      ctx.textAlign = 'center';
+      labels.forEach((label, i) => {
+        ctx.fillText(label, w / 2, padding + i * (barHeight + gap) + barHeight / 2);
+      });
+
+      // Bars
+      counts.forEach((count, i) => {
+        const barX = (w - barWidth) / 2;
+        const barY = padding + i * (barHeight + gap);
+        const fillWidth = (count / maxCount) * barWidth;
+
+        // Background bar
+        ctx.fillStyle = isDark ? 'rgba(71,85,105,0.3)' : 'rgba(148,163,184,0.3)';
+        ctx.fillRect(barX, barY, barWidth, barHeight);
+
+        // Fill bar
+        const gradient = ctx.createLinearGradient(barX, 0, barX + fillWidth, 0);
+        gradient.addColorStop(0, '#fbbf24');
+        gradient.addColorStop(1, '#f59e0b');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(barX, barY, fillWidth, barHeight);
+
+        // Value
+        ctx.fillStyle = isDark ? '#f1f5f9' : '#1e293b';
+        ctx.font = 'bold 20px Inter';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(count, barX + barWidth + 20, barY + barHeight / 2);
+      });
+    }
+
+    function drawCharts() {
+      drawLineChart('ordersChart', [245, 890, 2450, 1870]);
+      drawLineChart('totalChart', [1200, 1800, 2200, 2570], true);
+      drawReviewsChart();
+    }
+
+    // Initial draw
+    drawCharts();
+
+    // Resize handler
+    window.addEventListener('resize', drawCharts);
+  </script>
+</body>
+</html>

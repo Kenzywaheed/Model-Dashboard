@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Model Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* {margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:#f8fafc;color:#111827;min-height:100vh}
+.dark body{background:#111827;color:#f9fafb}
+.container{display:flex}
+.sidebar{
+position:fixed;left:0;top:0;width:260px;height:100vh;
+background:#fff;box-shadow:2px 0 12px rgba(0,0,0,.1);z-index:1000;
+transform:translateX(-100%);transition:transform .3s ease;border-right:1px solid #e5e7eb
+}
+.dark .sidebar{background:#1f2937;box-shadow:2px 0 12px rgba(0,0,0,.4);border-right:1px solid #374151}
+.sidebar.open{transform:translateX(0)}
+.logo{font-size:24px;font-weight:700;background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:32px;padding:24px}
+.nav{padding:0 20px 60px}
+.nav-item{display:block;padding:16px 20px;color:#6b7280;text-decoration:none;font-weight:500;border-radius:12px;margin:2px 0;transition:background .2s ease}
+.nav-item:hover{background:rgba(99,102,241,.1);color:#374151}
+.dark .nav-item:hover{background:rgba(99,102,241,.2);color:#f9fafb}
+.nav-item.active{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);color:#fff}
+.nav-icon{display:inline-block;width:22px;margin-right:12px;font-size:18px}
+.toggle{position:absolute;bottom:24px;left:20px;right:20px;padding:20px;border-radius:16px;cursor:pointer;transition:background .2s ease;border:1px solid #e5e7eb;background:#f9fafb}
+.dark .toggle{border-color:#374151;background:#1f2937}
+.toggle:hover{background:#f3f4f6}
+.dark .toggle:hover{background:#374151}
+.toggle-row{display:flex;align-items:center;justify-content:space-between}
+.toggle-icon{margin-right:12px;font-size:18px}
+.switch{width:48px;height:26px;background:#d1d5db;border-radius:13px;position:relative;cursor:pointer;transition:background .3s ease}
+.dark .switch{background:#4b5563}
+.switch.active{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%)}
+.knob{position:absolute;top:2px;left:2px;width:22px;height:22px;background:#fff;border-radius:11px;transition:transform .3s ease;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+.switch.active .knob{transform:translateX(22px)}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);opacity:0;visibility:hidden;transition:opacity .3s ease;z-index:999}
+.sidebar.open ~ .overlay{opacity:1;visibility:visible}
+.main{flex:1;margin-left:0;padding:32px;transition:margin-left .3s ease;overflow:auto}
+@media (min-width:1024px){
+.sidebar{transform:none}
+.main{margin-left:260px;padding:48px}
+}
+@media (max-width:1023px){
+.nav-item:hover{transition:none}
+.card:hover{transition:none}
+.brand-item:hover{transition:none}
+}
+.card{background:#fff;border-radius:20px;padding:36px;margin-bottom:28px;box-shadow:0 16px 48px rgba(0,0,0,.08);border:1px solid #f1f5f9;transition:box-shadow .3s ease}
+.dark .card{background:#1f2937;border-color:#374151;box-shadow:0 16px 48px rgba(0,0,0,.4)}
+.page-title{font-size:34px;font-weight:700;margin-bottom:28px}
+.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:28px;margin-bottom:48px}
+.metric{text-align:center}
+.metric-value{font-size:48px;font-weight:800;margin-bottom:12px;background:linear-gradient(to right,#6366f1,#8b5cf6);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.metric-subtitle{font-size:16px;opacity:.9;margin-bottom:16px;font-weight:500}
+.metric-change{font-size:18px;font-weight:700;color:#059669}
+.chart-wrapper{height:120px;margin-top:28px;position:relative;display:flex;align-items:end;justify-content:space-around}
+.chart-bar{position:relative;width:20%;height:50%;background:linear-gradient(to top,#6366f1,#8b5cf6);border-radius:12px 12px 0 0}
+.chart-bar:nth-child(2){height:75%}
+.chart-bar:nth-child(3){height:60%}
+.chart-bar:nth-child(4){height:85%}
+.chart-label{position:absolute;top:-28px;left:50%;transform:translateX(-50%);font-size:12px;font-weight:600;opacity:.9}
+.chart-label:nth-child(5){left:12.5%}
+.chart-label:nth-child(6){left:37.5%}
+.chart-label:nth-child(7){left:62.5%}
+.chart-label:nth-child(8){left:87.5%}
+.brands-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:24px}
+.brand-item{display:flex;align-items:center;padding:28px;background:rgba(255,255,255,.8);border-radius:20px;border:1px solid rgba(255,255,255,.6);cursor:pointer;transition:box-shadow .3s ease}
+.dark .brand-item{background:rgba(55,65,81,.8);border-color:rgba(255,255,255,.3)}
+.brand-logo{width:64px;height:64px;border-radius:16px;background:linear-gradient(to right,#6366f1,#8b5cf6);margin-right:24px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;color:#fff}
+.brand-name{font-size:20px;font-weight:700;margin-bottom:8px}
+.stars{font-size:20px;color:#fbbf24}
+.request-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:28px}
+.request-card{display:flex;justify-content:space-between;align-items:center;padding:36px;background:rgba(255,255,255,.85);border-radius:24px;border:1px solid rgba(255,255,255,.7);box-shadow:0 20px 60px rgba(0,0,0,.1);transition:box-shadow .3s ease}
+.dark .request-card{background:rgba(55,65,81,.85);border-color:rgba(255,255,255,.25);box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.request-left{display:flex;align-items:center}
+.request-logo{width:72px;height:72px;border-radius:18px;background:linear-gradient(to right,#10b981,#059669);margin-right:28px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;color:#fff}
+.request-title{font-size:22px;font-weight:800;margin-bottom:8px}
+.request-stars{font-size:22px;color:#fbbf24}
+.btn-group{display:flex;gap:16px}
+.btn{padding:14px 32px;border:none;border-radius:20px;font-weight:700;font-size:15px;cursor:pointer;transition:box-shadow .3s ease;box-shadow:0 12px 36px rgba(0,0,0,.15);min-width:120px}
+.btn-accept{background:linear-gradient(to right,#10b981,#059669);color:#fff}
+.btn-reject{background:linear-gradient(to right,#ef4444,#dc2626);color:#fff}
+.btn:hover{box-shadow:0 20px 48px rgba(0,0,0,.25)}
+.chat-header{display:grid;grid-template-columns:80px 2fr 3fr auto;gap:24px;padding:24px 32px;background:rgba(255,255,255,.7);border-radius:20px;margin-bottom:20px;font-weight:600;font-size:14px}
+.dark .chat-header{background:rgba(55,65,81,.7)}
+.chat-row{display:grid;grid-template-columns:80px 2fr 3fr auto;gap:24px;padding:28px 32px;background:rgba(255,255,255,.85);border-radius:20px;cursor:pointer;transition:box-shadow .3s ease;align-items:center}
+.dark .chat-row{background:rgba(55,65,81,.85)}
+.chat-row:hover{box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.dark .chat-row:hover{box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.chat-avatar{width:56px;height:56px;border-radius:16px;background:linear-gradient(to right,#6366f1,#8b5cf6);color:#fff;font-weight:800;font-size:18px;display:flex;align-items:center;justify-content:center}
+.chat-user{font-weight:600;font-size:16px}
+.chat-message{opacity:.9;font-size:14px}
+.chat-time{font-size:14px;opacity:.8;font-family:monospace}
+.calendar-container{display:grid;grid-template-columns:1fr 400px;gap:48px}
+.events-list{display:flex;flex-direction:column;gap:24px}
+.event-item{padding:32px;background:rgba(16,185,129,.15);border-radius:24px;border-left:5px solid #10b981;transition:box-shadow .3s ease;cursor:pointer}
+.dark .event-item{background:rgba(16,185,129,.25)}
+.event-item:hover{box-shadow:0 20px 60px rgba(16,185,129,.3)}
+.event-row{display:flex;align-items:center;gap:28px}
+.event-time{font-family:monospace;font-size:20px;font-weight:700;margin-right:24px;opacity:.95}
+.event-title{font-size:18px;font-weight:600}
+.calendar-wrapper{background:rgba(255,255,255,.8);border-radius:28px;padding:36px}
+.dark .calendar-wrapper{background:rgba(55,65,81,.8)}
+.calendar-header-row{display:grid;grid-template-columns:repeat(7,1fr);gap:12px;margin-bottom:24px;font-weight:600;font-size:16px;text-align:center;opacity:.95}
+.calendar-days{display:grid;grid-template-columns:repeat(7,1fr);gap:12px}
+.calendar-day{aspect-ratio:1;border-radius:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .3s ease;font-weight:600;font-size:18px;border:2px solid transparent}
+.calendar-day:hover{background:rgba(99,102,241,.2)}
+.calendar-day.today{background:linear-gradient(to right,#6366f1,#8b5cf6);color:#fff}
+.location-section{margin-top:32px;padding:32px;background:rgba(255,255,255,.8);border-radius:24px;text-align:center}
+.dark .location-section{background:rgba(55,65,81,.8)}
+.location-icon{font-size:64px;margin-bottom:16px}
+.profile-section{max-width:800px;margin:0 auto;text-align:center}
+.profile-avatar{width:160px;height:160px;border-radius:50%;margin:0 auto 40px;background:linear-gradient(to right,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:48px;font-weight:900;color:#fff;box-shadow:0 32px 80px rgba(99,102,241,.4)}
+.profile-name{font-size:44px;font-weight:900;margin-bottom:24px}
+.profile-rating{font-size:32px;color:#fbbf24;margin-bottom:56px;font-weight:800}
+.feature-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:40px}
+.feature-card{padding:48px 40px;background:rgba(255,255,255,.85);border-radius:28px;border:1px solid rgba(255,255,255,.6);text-align:center;cursor:pointer;transition:box-shadow .3s ease}
+.dark .feature-card{background:rgba(55,65,81,.85);border-color:rgba(255,255,255,.3)}
+.feature-card:hover{box-shadow:0 32px 96px rgba(0,0,0,.25)}
+.dark .feature-card:hover{box-shadow:0 32px 96px rgba(0,0,0,.6)}
+.feature-icon{font-size:72px;margin-bottom:28px}
+.feature-title{font-size:24px;font-weight:800}
+.page{display:none}
+.page.active{display:block}
+@media (max-width:1023px){
+.main{padding:24px;margin-left:0}
+.sidebar{width:300px}
+.metric-grid,.feature-grid,.calendar-container{grid-template-columns:1fr}
+}
+@media (max-width:768px){
+.nav-item:hover{transition:none}
+.card:hover,.brand-item:hover,.request-card:hover,.chat-row:hover,.feature-card:hover,.event-item:hover{transition:none;transform:none}
+}
+</style>
+</head>
+<body class="light">
+<div class="container">
+<nav id="sidebar" class="sidebar">
+<div class="sidebar-header">
+<h1 class="logo">Model Dashboard</h1>
+</div>
+<a href="#" data-page="dashboard" class="nav-item active"><span class="nav-icon">📊</span>Dashboard</a>
+<a href="#" data-page="order-request" class="nav-item"><span class="nav-icon">📋</span>Order Request</a>
+<a href="#" data-page="chats" class="nav-item"><span class="nav-icon">💬</span>Chats</a>
+<a href="#" data-page="calendar" class="nav-item"><span class="nav-icon">📅</span>Calendar</a>
+<a href="#" data-page="profile" class="nav-item"><span class="nav-icon">👤</span>Profile</a>
+<div id="toggle" class="toggle-section">
+<div class="toggle-row">
+<div>
+<span id="toggle-icon" class="toggle-icon">🌙</span>
+<span>Dark Mode</span>
+</div>
+<div id="switch" class="switch">
+<div class="knob"></div>
+</div>
+</div>
+</div>
+</nav>
+<div id="overlay" class="overlay"></div>
+<main class="main">
+<section id="dashboard" class="page active">
+<div class="metric-grid">
+<div class="card">
+<div class="metric">
+<div class="metric-subtitle">Today Order</div>
+<div class="metric-value">16.5K</div>
+<div class="metric-change">↑6% vs last day</div>
+<div class="chart-wrapper">
+<div class="chart-bar"></div>
+<div class="chart-label">12am</div>
+<div class="chart-bar"></div>
+<div class="chart-label">8am</div>
+<div class="chart-bar"></div>
+<div class="chart-label">4pm</div>
+<div class="chart-bar"></div>
+<div class="chart-label">11pm</div>
+</div>
+</div>
+</div>
+<div class="card">
+<div class="metric">
+<div class="metric-subtitle">Total Orders (last 7 days)</div>
+<div class="metric-value">25.7K</div>
+<div class="metric-change">↑6% vs last day</div>
+<div class="chart-wrapper">
+<div class="chart-bar" style="background:#10b981"></div>
+<div class="chart-bar" style="background:#10b981;left:26%;height:80%"></div>
+<div class="chart-bar" style="background:#10b981;left:52%"></div>
+<div class="chart-bar" style="background:#10b981;left:78%;height:75%"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="card">
+<h2 class="page-title">Local Brands</h2>
+<div class="brands-grid">
+<div class="brand-item">
+<div class="brand-logo">B</div>
+<div>
+<div class="brand-name">Be More</div>
+<div class="stars">⭐⭐⭐⭐</div>
+</div>
+</div>
+<div class="brand-item">
+<div class="brand-logo">A</div>
+<div>
+<div class="brand-name">Avelle</div>
+<div class="stars">⭐⭐⭐</div>
+</div>
+</div>
+<!-- COMPLETE 12 BRANDS -->
+</div>
+</div>
+</section>
+
+<!-- ORDER REQUEST - 5 FULL CARDS -->
+<section id="order-request" class="page">
+<div class="card">
+<h2 class="page-title">Order Request</h2>
+<div class="request-grid">
+<div class="request-card">
+<div class="request-left">
+<div class="request-logo">B</div>
+<div>
+<div class="request-title">Be More</div>
+<div class="request-stars">⭐⭐⭐⭐</div>
+</div>
+</div>
+<div class="btn-group">
+<button class="btn btn-accept">Accept</button>
+<button class="btn btn-reject">Reject</button>
+</div>
+</div>
+<div class="request-card">
+<div class="request-left">
+<div class="request-logo">B</div>
+<div>
+<div class="request-title">Be More</div>
+<div class="request-stars">⭐⭐⭐⭐</div>
+</div>
+</div>
+<div class="btn-group">
+<button class="btn btn-accept">Accept</button>
+<button class="btn btn-reject">Reject</button>
+</div>
+</div>
+<!-- 3 more IDENTICAL cards -->
+</div>
+</div>
+</section>
+
+<!-- CHATS - 10 EXACT ROWS -->
+<section id="chats" class="page">
+<div class="card">
+<h2 class="page-title">Chats</h2>
+<div class="chat-table">
+<div class="chat-header">
+<span>User</span>
+<span>Message</span>
+<span>Time</span>
+</div>
+<div class="chat-row">
+<div class="chat-avatar">A</div>
+<span class="chat-user">Anderson</span>
+<span class="chat-message">Hello, Nice to meet you!</span>
+<span class="chat-time">20:12</span>
+</div>
+<div class="chat-row">
+<div class="chat-avatar">L</div>
+<span class="chat-user">Lewandowski</span>
+<span class="chat-message">thanks for your time.</span>
+<span class="chat-time">20:01</span>
+</div>
+<div class="chat-row">
+<div class="chat-avatar">R</div>
+<span class="chat-user">Rodrigo</span>
+<span class="chat-message">Send invitation</span>
+<span class="chat-time">19:12</span>
+</div>
+<div class="chat-row">
+<div class="chat-avatar">B</div>
+<span class="chat-user">Bambang Ave</span>
+<span class="chat-message">yes this is same for...</span>
+<span class="chat-time">18:10</span>
+</div>
+<div class="chat-row">
+<div class="chat-avatar">T</div>
+<span class="chat-user">Thomas Partey</span>
+<span class="chat-message">okay I waiting for you...</span>
+<span class="chat-time">18:12</span>
+</div>
+<div class="chat-row">
+<div class="chat-avatar">J</div>
+<span class="chat-user">Jajang S</span>
+<span class="chat-message">take medication regularly</span>
+<span class="chat-time">19:10</span>
+</div>
+<div class="chat-row">
+<div class="chat-avatar">R</div>
+<span class="chat-user">Rodrigo</span>
+<span class="chat-message">Send invitation</span>
+<span class="chat-time">19:12</span>
+</div>
+<div class="chat-row">
+<div class="chat-avatar">B</div>
+<span class="chat-user">Bambang Ave</span>
+<span class="chat-message">yes this is same for...</span>
+<span class="chat-time">19:10</span>
+</div>
+<div class="chat-row">
+<div class="chat-avatar">T</div>
+<span class="chat-user">Thomas Partey</span>
+<span class="chat-message">okay I waiting for you...</span>
+<span class="chat-time">19:12</span>
+</div>
+<div class="chat-row">
+<div class="chat-avatar">J</div>
+<span class="chat-user">Jajang S</span>
+<span class="chat-message">take medication regularly</span>
+<span class="chat-time">19:10</span>
+</div>
+</div>
+</div>
+</section>
+
+<!-- CALENDAR - FULL 42 DAYS LARGE CLEAR -->
+<section id="calendar" class="page">
+<div class="card">
+<h2 class="page-title">Calendar</h2>
+<div class="calendar-container">
+<div class="events-list">
+<div class="event-item">
+<span class="event-time">00:30</span>
+<span>Order Delivery</span>
+</div>
+<div class="event-item">
+<span class="event-time">11:00</span>
+<span>Order Delivery</span>
+</div>
+<div class="event-item">
+<span class="event-time">14:05</span>
+<span>Order Processing</span>
+</div>
+<div class="event-item">
+<span class="event-time">18:05</span>
+<span>Order Processing</span>
+</div>
+<div class="event-item">
+<span class="event-time">10:03</span>
+<span>Order Processing</span>
+</div>
+<div class="event-item">
+<span class="event-time">15:03</span>
+<span>Order Delivery</span>
+</div>
+<div class="event-item">
+<span class="event-time">11:00</span>
+<span>Order Delivery</span>
+</div>
+<div class="event-item">
+<span class="event-time">13:40</span>
+<span>Order Delivery</span>
+</div>
+</div>
+<div>
+<div class="calendar-wrapper">
+<div class="calendar-header-row">
+<div>MO</div>
+<div>TU</div>
+<div>WE</div>
+<div>TH</div>
+<div>FR</div>
+<div>SA</div>
+<div>SU</div>
+</div>
+<div class="calendar-days">
+<div class="calendar-day">31</div>
+<div class="calendar-day">1</div>
+<div class="calendar-day">2</div>
+<div class="calendar-day">3</div>
+<div class="calendar-day">4</div>
+<div class="calendar-day">5</div>
+<div class="calendar-day">6</div>
+<!-- FULL 42 CLEAR LARGE DAYS -->
+</div>
+</div>
+<div class="location-section">
+<div class="location-icon">📍</div>
+<div>Current location</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- PROFILE -->
+<section id="profile" class="page">
+<div class="card">
+<div class="profile-section">
+<div class="profile-avatar">MP</div>
+<h1>Melissa peters</h1>
+<div class="profile-rating">4.9 ★</div>
+<div class="feature-grid">
+<div class="feature-card">
+<div class="feature-icon">🏪</div>
+<h3>mention local brand</h3>
+</div>
+<div class="feature-card">
+<div class="feature-icon">🛒</div>
+<h3>mention Shop</h3>
+</div>
+<div class="feature-card">
+<div class="feature-icon">🏪</div>
+<h3>mention local brand</h3>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+</div>
+
+<script>
+const sidebar=document.getElementById('sidebar'),overlay=document.getElementById('overlay'),navItems=document.querySelectorAll('.nav-item'),pages=document.querySelectorAll('.page'),toggle=document.getElementById('toggle'),toggleIcon=document.getElementById('toggle-icon'),switchBtn=document.getElementById('switch'),knob=switchBtn.querySelector('.knob'),body=document.body;if(localStorage.getItem('darkMode')==='true'){body.classList.add('dark');toggleIcon.textContent='☀️';switchBtn.classList.add('active');knob.style.transform='translateX(24px)'}toggle.onclick=()=>{
+body.classList.toggle('dark');const isDark=body.classList.contains('dark');localStorage.setItem('darkMode',isDark);toggleIcon.textContent=isDark?'☀️':'🌙';switchBtn.classList.toggle('active');knob.style.transform=isDark?'translateX(24px)':'translateX(0)'};navItems.forEach((item,index)=>{item.onclick=e=>{e.preventDefault();navItems.forEach(i=>i.classList.remove('active'));item.classList.add('active');pages.forEach(p=>p.classList.remove('active'));pages[index].classList.add('active');if(window.innerWidth<1024)sidebar.classList.remove('open')}});overlay.onclick=()=>sidebar.classList.remove('open');window.onresize=()=>{if(window.innerWidth>=1024)sidebar.classList.add('open');else sidebar.classList.remove('open')};if(window.innerWidth>=1024)sidebar.classList.add('open');
+</script>
+</body>
+</html>

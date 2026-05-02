@@ -1,0 +1,42 @@
+.candidate-card-large {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  align-items: center;
+  text-align: center;
+}
+
+.candidate-card-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.candidate-card-name {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 0.5rem;
+}
+
+.candidate-card-rating {
+  color: #fbbf24;
+  letter-spacing: 2px;
+}
+
+.candidate-card-actions {
+  display: flex;
+  gap: 1rem;
+  width: 100%;
+}
+
+.btn-full {
+  flex: 1;
+}
+
+.fade-out {
+  opacity: 0;
+  transform: scale(0.9);
+  transition: all 0.3s ease-out;
+}

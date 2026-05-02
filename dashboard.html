@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Model Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.6;
+      transition: all 0.3s ease;
+    }
+    
+    .light {
+      background: linear-gradient(135deg, #f5f5f7 0%, #f0f2f5 100%);
+      color: #1a1a1a;
+    }
+    
+    .dark {
+      background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
+      color: #f5f5f5;
+    }
+    
+    .sidebar {
+      position: fixed;
+      left: 0;
+      top: 0;
+      height: 100vh;
+      width: 280px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      box-shadow: 4px 0 30px rgba(0, 0, 0, 0.1);
+      z-index: 1000;
+      transform: translateX(-100%);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border-right: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    .dark .sidebar {
+      background: rgba(15, 15, 15, 0.95);
+      box-shadow: 4px 0 30px rgba(0, 0, 0, 0.4);
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .sidebar.open {
+      transform: translateX(0);
+    }
+    
+    .sidebar-header {
+      padding: 32px 24px 24px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    .dark .sidebar-header {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .sidebar-title {
+      font-size: 24px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.02em;
+    }
+    
+    .nav-item {
+      display: flex;
+      align-items: center;
+      padding: 16px 24px;
+      margin: 4px 0;
+      border-radius: 16px;
+      text-decoration: none;
+      color: #64748b;
+      font-weight: 500;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+    }
+    
+    .nav-item:hover {
+      background: rgba(102, 126, 234, 0.1);
+      color: #1a1a1a;
+      transform: translateX(4px);
+    }
+    
+    .dark .nav-item:hover {
+      background: rgba(102, 126, 234, 0.2);
+      color: #f5f5f5;
+    }
+    
+    .nav-item.active {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      box-shadow: 0 8px 32px rgba(102, 126, 234, 0.4);
+    }
+    
+    .nav-icon {
+      margin-right: 16px;
+      font-size: 20px;
+    }
+    
+    .theme-toggle {
+      margin-top: 32px;
+      padding: 16px 24px;
+      border-top: 1px solid rgba(0, 0, 0, 0.05);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-radius: 16px;
+      transition: all 0.2s ease;
+    }
+    
+    .dark .theme-toggle {
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .theme-toggle:hover {
+      background: rgba(0, 0, 0, 0.05);
+    }
+    
+    .dark .theme-toggle:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+    
+    .theme-label {
+      display: flex;
+      align-items: center;
+      font-weight: 500;
+    }
+    
+    .theme-icon {
+      margin-right: 12px;
+      font-size: 18px;
+      transition: all 0.3s ease;
+    }
+    
+    .theme-switch {
+      width: 48px;
+      height: 24px;
+      background: #e5e7eb;
+      border-radius: 12px;
+      position: relative;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+    
+    .dark .theme-switch {
+      background: #374151;
+    }
+    
+    .theme-switch.active {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .switch-knob {
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 10px;
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+    
+    .theme-switch.active .switch-knob {
+      transform: translateX(24px);
+    }
+    
+    .main-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(8px);
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+      z-index: 999;
+    }
+    
+    .sidebar.open + .main-overlay {
+      opacity: 1;
+      visibility: visible;
+    }
+    
+    .main-content {
+      margin-left: 0;
+      padding: 24px;
+      min-height: 100vh;
+      transition: margin-left 0.3s ease;
+      animation: fadeIn 0.5s ease-out;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .card {
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(20px);
+      border-radius: 24px;
+      padding: 32px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      margin-bottom: 24px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .dark .card {
+      background: rgba(20, 20, 20, 0.8);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 32px 80px rgba(0, 0, 0, 0.15);
+    }
+    
+    .dark .card:hover {
+      box-shadow: 0 32px 80px rgba(0, 0, 0, 0.6);
+    }
+    
+    .metric-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 24px;
+    }
+    
+    .metric-number {
+      font-size: 48px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+    }
+    
+    .metric-label {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      opacity: 0.8;
+    }
+    
+    .metric-change {
+      font-size: 14px;
+      font-weight: 600;
+      color: #10b981;
+    }
+    
+    .chart-container {
+      height: 120px;
+      position: relative;
+      margin-top: 24px;
+    }
+    
+    .chart-bar {
+      position: absolute;
+      bottom: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 8px 8px 0 0;
+      transition: all 0.5s ease;
+    }
+    
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 16px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    }
+    
+    .btn-accept {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+    }
+    
+    .btn-reject {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      color: white;
+    }
+    
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+    }
+    
+    .chat-item {
+      display: flex;
+      align-items: center;
+      padding: 20px;
+      border-radius: 16px;
+      margin-bottom: 12px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    
+    .chat-item:hover {
+      background: rgba(102, 126, 234, 0.1);
+    }
+    
+    .dark .chat-item:hover {
+      background: rgba(102, 126, 234, 0.2);
+    }
+    
+    .chat-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      margin-right: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    
+    @media (min-width: 1024px) {
+      .sidebar {
+        transform: translateX(0);
+      }
+      
+      .main-content {
+        margin-left: 280px;
+        padding: 40px;
+      }
+    }
+    
+    @media (max-width: 1023px) {
+      .main-overlay {
+        z-index: 999;
+      }
+    }
+  </style>
+</head>
+<body class="light">
+  <!-- Sidebar -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h1 class="sidebar-title">Model Dashboard</h1>
+    </div>
+    
+    <div class="nav-list">
+      <a href="#" data-page="dashboard" class="nav-item active">
+        <span class="nav-icon">📊</span>
+        Dashboard
+      </a>
+      <a href="#" data-page="order-request" class="nav-item">
+        <span class="nav-icon">📋</span>
+        Order Request
+      </a>
+      <a href="#" data-page="chats" class="nav-item">
+        <span class="nav-icon">💬</span>
+        Chats
+      </a>
+      <a href="#" data-page="calendar" class="nav-item">
+        <span class="nav-icon">📅</span>
+        Calendar
+      </a>
+      <a href="#" data-page="profile" class="nav-item">
+        <span class="nav-icon">👤</span>
+        Profile
+      </a>
+    </div>
+    
+    <div class="theme-toggle" id="themeToggle">
+      <div class="theme-label">
+        <span class="theme-icon" id="themeIcon">🌙</span>
+        <span>Dark Mode</span>
+      </div>
+      <div class="theme-switch" id="themeSwitch">
+        <div class="switch-knob"></div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Overlay -->
+  <div class="main-overlay" id="overlay"></div>
+
+  <!-- Main Content -->
+  <main class="main-content" id="mainContent">
+    <!-- Dashboard Page -->
+    <div id="dashboard-page" class="page-content active">
+      <div class="metric-card">
+        <div>
+          <div class="metric-label">Today Orders</div>
+          <div class="metric-number">$2,450</div>
+          <div class="metric-change">16.5K ↑6%</div>
+        </div>
+        <div class="chart-container">
+          <div class="chart-bar" style="left: 0%; width: 8%; height: 60%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
+          <div class="chart-bar" style="left: 25%; width: 10%; height: 80%;"></div>
+          <div class="chart-bar" style="left: 50%; width: 8%; height: 45%;"></div>
+          <div class="chart-bar" style="left: 75%; width: 12%; height: 70%;"></div>
+        </div>
+      </div>
+      <div class="metric-card">
+        <div>
+          <div class="metric-label">Total Orders</div>
+          <div class="metric-number">1,234</div>
+        </div>
+        <div class="chart-container">
+          <div class="chart-bar" style="left: 0%; width: 12%; height: 50%; background: #10b981;"></div>
+          <div class="chart-bar" style="left: 25%; width: 15%; height: 65%; background: #10b981;"></div>
+          <div class="chart-bar" style="left: 50%; width: 10%; height: 55%; background: #10b981;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Order Request Page -->
+    <div id="order-request-page" class="page-content">
+      <div class="card">
+        <h2 style="font-size: 28px; font-weight: 700; margin-bottom: 32px;">Order Requests</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 24px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 24px; background: rgba(255, 255, 255, 0.5); border-radius: 20px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);">
+            <div style="display: flex; align-items: center;">
+              <div style="width: 56px; height: 56px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; margin-right: 20px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; color: white;">B</div>
+              <div>
+                <div style="font-weight: 600; font-size: 18px; margin-bottom: 4px;">Be More</div>
+                <div style="color: #fbbf24; font-size: 14px;">★★★★☆</div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 12px;">
+              <button class="btn btn-accept">Accept</button>
+              <button class="btn btn-reject">Reject</button>
+            </div>
+          </div>
+          <!-- Duplicate for 4-6 items -->
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 24px; background: rgba(255, 255, 255, 0.5); border-radius: 20px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);">
+            <div style="display: flex; align-items: center;">
+              <div style="width: 56px; height: 56px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 16px; margin-right: 20px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; color: white;">S</div>
+              <div>
+                <div style="font-weight: 600; font-size: 18px; margin-bottom: 4px;">Spark</div>
+                <div style="color: #fbbf24; font-size: 14px;">★★★★★</div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 12px;">
+              <button class="btn btn-accept">Accept</button>
+              <button class="btn btn-reject">Reject</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chats Page -->
+    <div id="chats-page" class="page-content">
+      <div class="card">
+        <h2 style="font-size: 28px; font-weight: 700; margin-bottom: 32px;">Chats</h2>
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          <div class="chat-item">
+            <div class="chat-avatar" style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);">A</div>
+            <div style="flex: 1;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <span style="font-weight: 600; font-size: 16px;">Anderson</span>
+                <span style="font-size: 14px; color: #6b7280;">20:12</span>
+              </div>
+              <span style="color: #6b7280; font-size: 14px;">Hello, Nice to meet you!</span>
+            </div>
+          </div>
+          <!-- Additional chat items with exact data -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Calendar Page -->
+    <div id="calendar-page" class="page-content">
+      <div class="card">
+        <h2 style="font-size: 28px; font-weight: 700; margin-bottom: 32px;">Calendar</h2>
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 32px;">
+          <div>
+            <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 24px;">Upcoming Deliveries</h3>
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <div style="padding: 20px; background: rgba(16, 185, 129, 0.1); border-radius: 16px; border-left: 4px solid #10b981;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                  <span style="font-weight: 600;">Order #1234</span>
+                  <span>14:05</span>
+                </div>
+                <span>Order Processing</span>
+              </div>
+              <!-- More events -->
+            </div>
+          </div>
+          <div>
+            <div style="padding: 24px; background: rgba(255, 255, 255, 0.5); border-radius: 20px; text-align: center;">
+              <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 20px;">January 2024</h3>
+              <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; font-size: 14px;">
+                <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+                <!-- Calendar days -->
+                {Array.from({length: 42}, (_, i) => (
+              <div style="padding: 8px; border-radius: 8px; cursor: pointer; transition: background 0.2s; font-weight: 400;">
+                    ${i + 1}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profile Page -->
+    <div id="profile-page" class="page-content">
+      <div class="card" style="text-align: center; max-width: 500px; margin: 0 auto;">
+        <div style="width: 120px; height: 120px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; margin: 0 auto 32px; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 700; color: white; box-shadow: 0 20px 60px rgba(102, 126, 234, 0.4);">
+          MP
+        </div>
+        <h1 style="font-size: 36px; font-weight: 800; margin-bottom: 16px;">Melissa Peters</h1>
+        <div style="font-size: 24px; color: #fbbf24; margin-bottom: 48px;">
+          ★★★★☆ 4.9
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;">
+          <div style="padding: 32px; background: rgba(255, 255, 255, 0.5); border-radius: 20px; text-align: center;">
+            <div style="font-size: 48px; margin-bottom: 16px;">🏪</div>
+            <h3 style="font-weight: 600; margin-bottom: 8px;">Local Brand</h3>
+            <p>Premium local brand partnerships</p>
+          </div>
+          <div style="padding: 32px; background: rgba(255, 255, 255, 0.5); border-radius: 20px; text-align: center;">
+            <div style="font-size: 48px; margin-bottom: 16px;">🛒</div>
+            <h3 style="font-weight: 600; margin-bottom: 8px;">Shop</h3>
+            <p>Exclusive online shop access</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Navigation
+    const navItems = document.querySelectorAll('.nav-item');
+    const pageContents = document.querySelectorAll('.page-content');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
+    const mainContent = document.getElementById('mainContent');
+    const themeToggle = document.getElementById('themeToggle');
+    const themeSwitch = document.getElementById('themeSwitch');
+    const themeIcon = document.getElementById('themeIcon');
+    const switchKnob = document.querySelector('.switch-knob');
+    const body = document.body;
+
+    let currentPage = 'dashboard';
+
+    // Load theme preference
+    if (localStorage.getItem('darkMode') === 'true') {
+      body.classList.add('dark');
+      themeSwitch.classList.add('active');
+      switchKnob.style.transform = 'translateX(24px)';
+      themeIcon.textContent = '☀️';
+    }
+
+    navItems.forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.preventDefault();
+        const page = item.dataset.page;
+        
+        // Update active nav
+        navItems.forEach(n => n.classList.remove('active'));
+        item.classList.add('active');
+        
+        // Switch page content
+        pageContents.forEach(p => p.classList.remove('active'));
+        document.getElementById(page + '-page').classList.add('active');
+        
+        currentPage = page;
+        
+        // Close mobile sidebar
+        if (window.innerWidth < 1024) {
+          sidebar.classList.remove('open');
+        }
+      });
+    });
+
+    // Theme toggle
+    themeToggle.addEventListener('click', () => {
+      const isDark = body.classList.contains('dark');
+      
+      if (isDark) {
+        body.classList.remove('dark');
+        themeIcon.textContent = '🌙';
+        localStorage.setItem('darkMode', 'false');
+      } else {
+        body.classList.add('dark');
+        themeIcon.textContent = '☀️';
+        localStorage.setItem('darkMode', 'true');
+      }
+      
+      themeSwitch.classList.toggle('active');
+      switchKnob.style.transform = body.classList.contains('dark') ? 'translateX(24px)' : 'translateX(0)';
+    });
+
+    // Mobile menu toggle
+    overlay.addEventListener('click', () => {
+      sidebar.classList.remove('open');
+    });
+
+    // Show sidebar on desktop
+    window.addEventListener('resize', () => {
+      if (window.innerWidth >= 1024) {
+        sidebar.classList.add('open');
+      } else {
+        sidebar.classList.remove('open');
+      }
+    });
+
+    // Initial desktop state
+    if (window.innerWidth >= 1024) {
+      sidebar.classList.add('open');
+    }
+
+    // Smooth page transitions
+    pageContents.forEach(page => {
+      page.style.opacity = '0';
+      page.style.transform = 'translateY(20px)';
+      page.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+    });
+
+    const observer = new MutationObserver(() => {
+      pageContents.forEach(page => {
+        if (page.classList.contains('active')) {
+          page.style.opacity = '1';
+          page.style.transform = 'translateY(0)';
+        }
+      });
+    });
+    observer.observe(mainContent, { childList: true, subtree: true });
+  </script>
+</body>
+</html>
+

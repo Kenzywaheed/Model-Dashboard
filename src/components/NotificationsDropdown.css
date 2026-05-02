@@ -1,0 +1,124 @@
+.notifications-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 320px;
+  max-height: 400px;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.notifications-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.btn-text {
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btn-text:hover {
+  text-decoration: underline;
+}
+
+.full-width {
+  width: 100%;
+  text-align: center;
+  padding: 0.75rem;
+}
+
+.notifications-body {
+  overflow-y: auto;
+  max-height: 300px;
+}
+
+.empty-notifications {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem;
+  gap: 0.5rem;
+}
+
+.empty-notifications .empty-icon {
+  font-size: 2rem;
+  opacity: 0.5;
+}
+
+.notifications-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.notification-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 1rem 1.5rem;
+  gap: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  position: relative;
+  transition: background-color var(--transition-fast);
+  cursor: pointer;
+}
+
+.notification-item:hover {
+  background-color: var(--hover-bg);
+}
+
+.notification-item.unread {
+  background-color: rgba(79, 70, 229, 0.05);
+}
+
+.notification-icon {
+  font-size: 1.25rem;
+  margin-top: 0.25rem;
+}
+
+.notification-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.notification-text {
+  font-size: 0.875rem;
+  color: var(--text-main);
+  line-height: 1.4;
+}
+
+.notification-time {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.unread-dot {
+  width: 8px;
+  height: 8px;
+  background-color: var(--primary-color);
+  border-radius: 50%;
+  margin-top: 0.5rem;
+}
+
+.notifications-footer {
+  border-top: 1px solid var(--border-color);
+  background-color: var(--hover-bg);
+}

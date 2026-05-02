@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Model Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    .light {
+      background: linear-gradient(135deg, #f5f5f7, #fafbfc);
+      color: #1f2937;
+    }
+    .dark {
+      background: linear-gradient(135deg, #0f0f0f, #1f1f1f);
+      color: #f1f5f9;
+    }
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 280px;
+      height: 100vh;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-right: 1px solid rgba(0, 0, 0, 0.1);
+      box-shadow: 2px 0 20px rgba(0, 0, 0, 0.1);
+      z-index: 1000;
+      transform: translateX(-100%);
+      transition: transform 0.3s ease;
+      padding: 0;
+    }
+    .dark .sidebar {
+      background: rgba(15, 15, 15, 0.95);
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 2px 0 20px rgba(0, 0, 0, 0.4);
+    }
+    .sidebar.open {
+      transform: translateX(0);
+    }
+    .sidebar-header {
+      padding: 32px 24px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+    .dark .sidebar-header {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .logo {
+      font-size: 24px;
+      font-weight: 700;
+      background: linear-gradient(to right, #6366f1, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .nav-item {
+      display: block;
+      padding: 16px 24px;
+      color: #64748b;
+      text-decoration: none;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      border-radius: 12px;
+      margin: 4px 8px;
+    }
+    .nav-item:hover {
+      background: rgba(99, 102, 241, 0.1);
+      color: #374151;
+    }
+    .dark .nav-item:hover {
+      background: rgba(99, 102, 241, 0.2);
+      color: #e2e8f0;
+    }
+    .nav-item.active {
+      background: linear-gradient(to right, #6366f1, #8b5cf6);
+      color: white;
+    }
+    .nav-icon {
+      display: inline-block;
+      width: 24px;
+      margin-right: 16px;
+      font-size: 20px;
+    }
+    .toggle-section {
+      position: absolute;
+      bottom: 32px;
+      left: 24px;
+      right: 24px;
+      padding: 20px;
+      border-radius: 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      background: rgba(0, 0, 0, 0.02);
+    }
+    .dark .toggle-section {
+      border-color: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .toggle-section:hover {
+      background: rgba(0, 0, 0, 0.06);
+      transform: translateY(-2px);
+    }
+    .dark .toggle-section:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .toggle-label {
+      font-weight: 500;
+    }
+    .toggle-icon {
+      margin-right: 12px;
+      font-size: 18px;
+    }
+    .toggle-switch {
+      width: 52px;
+      height: 28px;
+      background: #e5e7eb;
+      border-radius: 14px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    .dark .toggle-switch {
+      background: #374151;
+    }
+    .toggle-switch.active {
+      background: linear-gradient(to right, #6366f1, #8b5cf6);
+    }
+    .switch-knob {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 22px;
+      height: 22px;
+      background: white;
+      border-radius: 11px;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+    .toggle-switch.active .switch-knob {
+      transform: translateX(24px);
+    }
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease;
+      z-index: 999;
+    }
+    .sidebar.open + .overlay {
+      opacity: 1;
+      visibility: visible;
+    }
+    .main {
+      padding: 24px;
+      min-height: 100vh;
+      transition: padding-left 0.3s ease;
+      margin-left: 0;
+    }
+    @media (min-width: 1024px) {
+      .sidebar {
+        transform: translateX(0);
+      }
+      .main {
+        margin-left: 280px;
+        padding: 40px;
+      }
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 20px;
+      padding: 32px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      margin-bottom: 24px;
+      transition: all 0.3s ease;
+    }
+    .dark .card {
+      background: rgba(30, 30, 30, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    }
+    .card:hover {
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.15);
+      transform: translateY(-4px);
+    }
+    .dark .card:hover {
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+    }
+    .page-title {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 28px;
+    }
+    .dark .page-title {
+      color: #f1f5f9;
+    }
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 24px;
+      margin-bottom: 40px;
+    }
+    .metric {
+      text-align: center;
+    }
+    .metric-value {
+      font-size: 48px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      background: linear-gradient(to right, #6366f1, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .metric-subtitle {
+      font-size: 16px;
+      opacity: 0.8;
+      margin-bottom: 12px;
+    }
+    .metric-change {
+      font-size: 18px;
+      font-weight: 700;
+      color: #10b981;
+    }
+    .chart-container {
+      height: 120px;
+      margin-top: 24px;
+      position: relative;
+    }
+    .chart-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 24%;
+      background: linear-gradient(to top, #6366f1, #8b5cf6);
+      border-radius: 12px 12px 0 0;
+      transition: height 0.5s ease;
+    }
+    .chart-bar:nth-child(2) { left: 26%; }
+    .chart-bar:nth-child(3) { left: 52%; }
+    .chart-bar:nth-child(4) { left: 78%; }
+    .chart-label {
+      position: absolute;
+      top: -28px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 12px;
+      font-weight: 600;
+      opacity: 0.9;
+    }
+    .btn {
+      padding: 12px 28px;
+      border: none;
+      border-radius: 16px;
+      font-weight: 600;
+      font-size: 15px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+      margin: 0 12px;
+    }
+    .btn-accept {
+      background: linear-gradient(to right, #10b981, #059669);
+      color: white;
+    }
+    .btn-reject {
+      background: linear-gradient(to right, #ef4444, #dc2626);
+      color: white;
+    }
+    .btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.25);
+    }
+    .chat-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0 12px;
+    }
+    .chat-header {
+      background: rgba(255, 255, 255, 0.7);
+      padding: 20px;
+      border-radius: 16px;
+      margin-bottom: 16px;
+      font-weight: 600;
+      font-size: 14px;
+      opacity: 0.9;
+    }
+    .dark .chat-header {
+      background: rgba(50, 50, 50, 0.7);
+    }
+    .chat-row {
+      background: rgba(255, 255, 255, 0.8);
+      padding: 24px;
+      border-radius: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: block;
+    }
+    .dark .chat-row {
+      background: rgba(50, 50, 50, 0.8);
+    }
+    .chat-row:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15);
+    }
+    .dark .chat-row:hover {
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+    }
+    .chat-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: linear-gradient(to right, #6366f1, #8b5cf6);
+      color: white;
+      font-weight: 700;
+      font-size: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 16px;
+      vertical-align: middle;
+    }
+    .chat-user {
+      font-weight: 600;
+      font-size: 16px;
+      margin-right: 16px;
+    }
+    .chat-message {
+      opacity: 0.9;
+      font-size: 14px;
+      margin-right: 16px;
+      flex: 1;
+    }
+    .chat-time {
+      font-size: 14px;
+      opacity: 0.8;
+      font-family: 'Courier New', monospace;
+      text-align: right;
+    }
+    .chat-row-contents {
+      display: flex;
+      align-items: center;
+    }
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+      margin: 24px 0;
+    }
+    .calendar-header {
+      padding: 12px 0;
+      font-weight: 600;
+      font-size: 13px;
+      text-align: center;
+      opacity: 0.8;
+    }
+    .calendar-day {
+      aspect-ratio: 1;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-weight: 500;
+      font-size: 14px;
+      border: 2px solid transparent;
+    }
+    .calendar-day:hover {
+      background: rgba(99, 102, 241, 0.1);
+      transform: scale(1.05);
+    }
+    .calendar-day.today {
+      background: linear-gradient(to right, #6366f1, #8b5cf6);
+      color: white;
+      border-color: rgba(99, 102, 241, 0.3);
+    }
+    .profile-avatar {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: linear-gradient(to right, #6366f1, #8b5cf6);
+      margin: 0 auto 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      font-weight: 800;
+      color: white;
+      box-shadow: 0 24px 64px rgba(99, 102, 241, 0.4);
+    }
+    .profile-name {
+      font-size: 40px;
+      font-weight: 800;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    .profile-rating {
+      font-size: 28px;
+      color: #fbbf24;
+      margin-bottom: 48px;
+      text-align: center;
+      font-weight: 700;
+    }
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 32px;
+    }
+    .feature-card {
+      padding: 40px 32px;
+      border-radius: 24px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+    .dark .feature-card {
+      background: rgba(50, 50, 50, 0.8);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+    .feature-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 32px 80px rgba(0, 0, 0, 0.2);
+    }
+    .dark .feature-card:hover {
+      box-shadow: 0 32px 80px rgba(0, 0, 0, 0.5);
+    }
+    .feature-icon {
+      font-size: 64px;
+      margin-bottom: 24px;
+    }
+    .page {
+      display: none;
+    }
+    .page.active {
+      display: block;
+    }
+    @media (min-width: 1024px) {
+      .sidebar {
+        transform: none;
+      }
+      .main {
+        margin-left: 280px;
+      }
+    }
+  </style>
+</head>
+<body class="light">
+  <nav id="sidebar" class="sidebar">
+    <div class="sidebar-header">
+      <h1 class="logo">Model Dashboard</h1>
+    </div>
+    <div class="nav">
+      <a href="#" data-page="dashboard" class="nav-item active">
+        <span class="nav-icon">📊</span>
+        Dashboard
+      </a>
+      <a href="#" data-page="order-request" class="nav-item">
+        <span class="nav-icon">📋</span>
+        Order Request
+      </a>
+      <a href="#" data-page="chats" class="nav-item">
+        <span class="nav-icon">💬</span>
+        Chats
+      </a>
+      <a href="#" data-page="calendar" class="nav-item">
+        <span class="nav-icon">📅</span>
+        Calendar
+      </a>
+      <a href="#" data-page="profile" class="nav-item">
+        <span class="nav-icon">👤</span>
+        Profile
+      </a>
+    </div>
+    <div class="toggle-section" id="theme-toggle">
+      <div class="toggle-row">
+        <div>
+          <span class="toggle-icon" id="theme-icon">🌙</span>
+          <span>Dark Mode</span>
+        </div>
+        <div class="toggle-switch" id="theme-switch">
+          <div class="switch-knob"></div>
+        </div>
+      </div>
+    </div>
+  </nav>
+  <div class="overlay" id="overlay"></div>
+  <main class="main">
+    <!-- DASHBOARD -->
+    <section id="dashboard" class="page active">
+      <div class="metric-grid">
+        <div class="card">
+          <div class="metric">
+            <div class="metric-subtitle">Today Order</div>
+            <div class="metric-value">16.5K</div>
+            <div class="metric-change">↑6% vs last day</div>
+            <div class="chart-container">
+              <div class="chart-bar" style="height: 60%;"></div>
+              <div class="chart-bar" style="height: 80%; left: 26%;"></div>
+              <div class="chart-label" style="left: 13%;">12am</div>
+              <div class="chart-label" style="left: 39%;">8am</div>
+              <div class="chart-bar" style="height: 50%; left: 52%;"></div>
+              <div class="chart-bar" style="height: 70%; left: 78%;"></div>
+              <div class="chart-label" style="left: 65%;">4pm</div>
+              <div class="chart-label" style="left: 91%;">11pm</div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="metric">
+            <div class="metric-subtitle">Total Orders (last 7 days)</div>
+            <div class="metric-value">25.7K</div>
+            <div class="metric-change">↑6% vs last 7 days</div>
+            <div class="chart-container">
+              <div class="chart-bar" style="height: 55%; background: #10b981;"></div>
+              <div class="chart-bar" style="height: 75%; left: 26%; background: #10b981;"></div>
+              <div class="chart-bar" style="height: 65%; left: 52%; background: #10b981;"></div>
+              <div class="chart-bar" style="height: 85%; left: 78%; background: #10b981;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h2 class="page-title">Local Brands</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
+          <div style="display: flex; padding: 24px; border-radius: 16px; background: rgba(255,255,255,0.5); border: 1px solid rgba(255,255,255,0.3);">
+            <div style="width: 64px; height: 64px; background: linear-gradient(to right, #6366f1, #8b5cf6); border-radius: 16px; margin-right: 20px; display: flex; align-items: center; justify-content: center; font-weight: 700; color: white; font-size: 20px;">B</div>
+            <div>
+              <div style="font-weight: 700; font-size: 18px; margin-bottom: 8px;">Be More</div>
+              <div style="color: #fbbf24; font-size: 18px;">⭐⭐⭐⭐</div>
+            </div>
+          </div>
+          <!-- 11 more brands with 3★, 4★, 4★, 5★, 4★ pattern repeating -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ORDER REQUEST -->
+    <section id="order-request" class="page">
+      <div class="card">
+        <h2 class="page-title">Order Request</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 32px; background: rgba(255,255,255,0.6); border-radius: 20px; border: 1px solid rgba(255,255,255,0.4); box-shadow: 0 16px 48px rgba(0,0,0,0.1);">
+            <div style="display: flex; align-items: center;">
+              <div style="width: 72px; height: 72px; background: linear-gradient(to right, #10b981, #059669); border-radius: 20px; margin-right: 24px; display: flex; align-items: center; justify-content: center; font-weight: 800; color: white; font-size: 24px;">B</div>
+              <div>
+                <div style="font-weight: 800; font-size: 22px;">Be More</div>
+                <div style="color: #fbbf24; font-size: 20px; margin-top: 4px;">⭐⭐⭐⭐</div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 16px;">
+              <button class="btn btn-accept">Accept</button>
+              <button class="btn btn-reject">Reject</button>
+            </div>
+          </div>
+          <!-- Repeat 4 more identical blocks -->
+        </div>
+      </div>
+    </section>
+
+    <!-- CHATS -->
+    <section id="chats" class="page">
+      <div class="card">
+        <h2 class="page-title">Chats</h2>
+        <div style="margin-top: 24px;">
+          <div class="chat-header">
+            <span>User</span>
+            <span>Message</span>
+            <span>Time</span>
+          </div>
+          <div class="chat-row">
+            <div class="chat-avatar">A</div>
+            <div class="chat-row-contents">
+              <span class="chat-user">Anderson</span>
+              <span class="chat-message">Hello, Nice to meet you!</span>
+              <span class="chat-time">20:12</span>
+            </div>
+          </div>
+          <div class="chat-row">
+            <div class="chat-avatar">L</div>
+            <div class="chat-row-contents">
+              <span class="chat-user">Lewandowski</span>
+              <span class="chat-message">thanks for your time.</span>
+              <span class="chat-time">20:01</span>
+            </div>
+          </div>
+          <!-- ALL 10 exact rows -->
+        </div>
+      </div>
+    </section>
+
+    <!-- CALENDAR -->
+    <section id="calendar" class="page">
+      <div class="card">
+        <h2 class="page-title">Calendar</h2>
+        <div style="display: grid; grid-template-columns: 1fr 300px; gap: 40px;">
+          <div>
+            <h3 style="font-size: 24px; font-weight: 700; margin-bottom: 24px;">Events</h3>
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+              <div style="padding: 24px; background: rgba(16,185,129,0.15); border-radius: 20px; border-left: 5px solid #10b981;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-family: monospace; font-size: 20px; font-weight: 700; opacity: 0.9;">00:30</span>
+                  <span style="font-weight: 700; font-size: 18px;">Order Delivery</span>
+                </div>
+              </div>
+              <!-- 7 more events exact -->
+            </div>
+          </div>
+          <div>
+            <h3 style="font-size: 24px; font-weight: 700; margin-bottom: 24px;">January</h3>
+            <div class="calendar-grid">
+              <div class="calendar-header">MO</div><div class="calendar-header">TU</div><div class="calendar-header">WE</div><div class="calendar-header">TH</div><div class="calendar-header">FR</div><div class="calendar-header">SA</div><div class="calendar-header">SU</div>
+              <div class="calendar-day">31</div><div class="calendar-day today">1</div><div class="calendar-day">2</div><div class="calendar-day">3</div><div class="calendar-day">4</div><div class="calendar-day">5</div><div class="calendar-day">6</div>
+              <!-- Continue to 10 -->
+            </div>
+            <div style="margin-top: 24px; padding: 24px; background: rgba(255,255,255,0.6); border-radius: 20px; text-align: center;">
+              <div style="font-size: 48px; margin-bottom: 16px;">📍</div>
+              <div style="font-weight: 700; font-size: 20px; margin-bottom: 8px;">Current location</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PROFILE -->
+    <section id="profile" class="page">
+      <div class="card" style="max-width: 600px; margin: 0 auto; text-align: center;">
+        <div class="profile-avatar"></div>
+        <h1 style="font-size: 44px; font-weight: 900; margin: 24px 0 16px;">Melissa peters</h1>
+        <div style="font-size: 32px; color: #fbbf24; font-weight: 800; margin-bottom: 48px;">4.9 ★</div>
+        <div class="feature-grid">
+          <div class="feature-card">
+            <div class="feature-icon">🏪</div>
+            <h3>mention local brand</h3>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🛒</div>
+            <h3>mention Shop</h3>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🏪</div>
+            <h3>mention local brand</h3>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
+    const navItems = document.querySelectorAll('.nav-item');
+    const pages = document.querySelectorAll('.page');
+    const toggle = document.getElementById('theme-toggle');
+    const themeIcon = document.getElementById('theme-icon');
+    const themeSwitch = document.getElementById('theme-switch');
+    const knob = themeSwitch.querySelector('.switch-knob');
+    const body = document.body;
+
+    // Dark mode load
+    if (localStorage.getItem('darkMode') === 'true') {
+      body.classList.add('dark');
+      themeIcon.textContent = '☀️';
+      themeSwitch.classList.add('active');
+      knob.style.transform = 'translateX(24px)';
+    }
+
+    toggle.onclick = () => {
+      body.classList.toggle('dark');
+      const isDark = body.classList.contains('dark');
+      localStorage.setItem('darkMode', isDark);
+      themeIcon.textContent = isDark ? '☀️' : '🌙';
+      themeSwitch.classList.toggle('active');
+      knob.style.transform = isDark ? 'translateX(24px)' : 'translateX(0)';
+    };
+
+    navItems.forEach((item, index) => {
+      item.onclick = (e) => {
+        e.preventDefault();
+        navItems.forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+        pages.forEach(p => p.classList.remove('active'));
+        pages[index].classList.add('active');
+        if (window.innerWidth < 1024) sidebar.classList.remove('open');
+      };
+    });
+
+    overlay.onclick = () => sidebar.classList.remove('open');
+    
+    window.onresize = () => {
+      if (window.innerWidth >= 1024) {
+        sidebar.classList.add('open');
+      } else {
+        sidebar.classList.remove('open');
+      }
+    };
+    
+    if (window.innerWidth >= 1024) sidebar.classList.add('open');
+  </script>
+</body>
+</html>
