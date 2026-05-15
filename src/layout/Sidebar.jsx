@@ -1,64 +1,57 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { useTheme } from '../context/ThemeContext';
-import './Sidebar.css';
+import { NavLink } from 'react-router-dom';
+import { useLanguage } from '../hooks/useLanguage';
+import {
+  AgreementIcon,
+  DashboardIcon,
+  PaletteIcon,
+  ProfileIcon,
+  RequestIcon,
+  ReviewIcon,
+  BellIcon,
+  CloseIcon,
+} from '../components/Icons';
 
-const navItems = [
-  { path: '/', label: 'Dashboard', icon: '📊' },
-  { path: '/candidates', label: 'Candidates', icon: '👥' },
-  { path: '/chats', label: 'Chats', icon: '💬' },
-  { path: '/calendar', label: 'Calendar', icon: '📅' },
-  { path: '/profile', label: 'Profile', icon: '👤' },
-];
+const Sidebar = ({ isOpen, isCollapsed, onClose }) => {
+  const { t } = useLanguage();
 
-const Sidebar = ({ isOpen, toggleSidebar }) => {
-  const { isDark, toggleTheme } = useTheme();
-  const location = useLocation();
-  
+  const navItems = [
+    { path: '/dashboard', label: t.nav.dashboard, icon: DashboardIcon },
+    { path: '/model-setup', label: t.nav.modelSetup, icon: ProfileIcon },
+    { path: '/requests', label: t.nav.requests, icon: RequestIcon },
+    { path: '/agreements', label: t.nav.agreements, icon: AgreementIcon },
+    { path: '/reviews', label: t.nav.reviews, icon: ReviewIcon },
+    { path: '/notifications', label: t.nav.notifications, icon: BellIcon },
+    { path: '/setup/palette', label: t.nav.palette, icon: PaletteIcon },
+  ];
+
   return (
     <>
-      {/* Mobile overlay */}
-      {isOpen && <div className="sidebar-overlay" onClick={toggleSidebar}></div>}
-      
-      <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
-        <div className="sidebar-header">
-          <div className="logo-container">
-            <div className="logo-icon">MD</div>
-            <h1 className="logo-text">Model Dashboard</h1>
+      <div className={`sidebar-overlay ${isOpen ? 'show' : ''}`} onClick={onClose} aria-hidden="true" />
+      <aside className={`sidebar ${isOpen ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
+        <div className="sidebar-brand">
+          <div className="brand-mark">MD</div>
+          <div className="brand-copy">
+            <strong>{t.common.appName}</strong>
+            <span>{t.common.modelWorkspace}</span>
           </div>
-          <button className="close-btn d-lg-none" onClick={toggleSidebar}>×</button>
+          <button type="button" className="icon-button sidebar-close" onClick={onClose}>
+            <CloseIcon className="icon-sm" />
+          </button>
         </div>
-        
+
         <nav className="sidebar-nav">
-          <ul className="nav-list">
-            {navItems.map((item) => {
-              const isActive = location.pathname === item.path;
-              return (
-                <li key={item.path} className="nav-item">
-                  <Link to={item.path} className={`nav-link ${isActive ? 'active' : ''}`}>
-                    <span className="nav-icon">{item.icon}</span>
-                    <span className="nav-label">{item.label}</span>
-                    {isActive && <div className="active-indicator"></div>}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+          {navItems.map(({ path, label, icon: Icon }) => (
+            <NavLink
+              key={path}
+              to={path}
+              onClick={onClose}
+              className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+            >
+              <Icon className="icon-sm" />
+              <span>{label}</span>
+            </NavLink>
+          ))}
         </nav>
-        
-        <div className="sidebar-footer">
-          <div className="theme-toggle-container">
-            <button className="theme-toggle-btn" onClick={toggleTheme}>
-              <div className="theme-toggle-info">
-                <span className="theme-icon">{isDark ? '🌙' : '☀️'}</span>
-                <span className="theme-label">{isDark ? 'Dark Mode' : 'Light Mode'}</span>
-              </div>
-              <div className={`toggle-switch ${isDark ? 'active' : ''}`}>
-                <div className="toggle-thumb"></div>
-              </div>
-            </button>
-          </div>
-        </div>
       </aside>
     </>
   );

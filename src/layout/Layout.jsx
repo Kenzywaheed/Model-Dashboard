@@ -1,21 +1,28 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 
-const Layout = ({ children }) => {
+const Layout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   return (
-    <div className="app-container">
-      <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
-      <div className="main-content">
-        <Topbar toggleSidebar={toggleSidebar} />
-        <main className="page-content">
-          {children}
+    <div className={`dashboard-shell ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <Sidebar
+        isOpen={isSidebarOpen}
+        isCollapsed={isSidebarCollapsed}
+        onClose={() => setIsSidebarOpen(false)}
+      />
+
+      <div className="dashboard-main">
+        <Topbar
+          isSidebarCollapsed={isSidebarCollapsed}
+          onOpenSidebar={() => setIsSidebarOpen(true)}
+          onToggleCollapse={() => setIsSidebarCollapsed((current) => !current)}
+        />
+        <main className="page-shell">
+          <Outlet />
         </main>
       </div>
     </div>

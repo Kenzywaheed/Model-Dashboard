@@ -1,152 +1,263 @@
-import React, { useState } from 'react';
-import './Dashboard.css';
-
-const ChartPlaceholder = ({ color, points }) => {
-  return (
-    <div className="chart-placeholder">
-      <svg viewBox="0 0 100 40" className="chart-svg">
-        <path 
-          d={`M 0 ${40 - points[0]} ${points.map((p, i) => `L ${i * (100 / (points.length - 1))} ${40 - p}`).join(' ')}`} 
-          fill="none" 
-          stroke={color} 
-          strokeWidth="2" 
-          strokeLinecap="round" 
-          strokeLinejoin="round" 
-        />
-      </svg>
-    </div>
-  );
-};
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  MetricCard,
+  SectionIntro,
+  StatusBadge,
+} from '../components/AppPrimitives';
+import { modelApi, normalizePaginatedResponse, readCachedModelProfile } from '../services/api';
+import { formatDateTime, formatNumber, translateEnum } from '../utils/formatters';
+import { useLanguage } from '../hooks/useLanguage';
 
 const Dashboard = () => {
-  const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState('Last 30 Days');
-  
-  const [candidates, setCandidates] = useState([
-    { id: 1, name: 'Sarah Wilson', role: 'UX Designer', rating: 5, checked: true },
-    { id: 2, name: 'Michael Chen', role: 'Frontend Dev', rating: 4, checked: false },
-    { id: 3, name: 'Emily Davis', role: 'Product Manager', rating: 5, checked: true },
-    { id: 4, name: 'James Smith', role: 'Backend Dev', rating: 4, checked: false },
-    { id: 5, name: 'Olivia Brown', role: 'Data Scientist', rating: 5, checked: true },
-    { id: 6, name: 'William Jones', role: 'DevOps', rating: 4, checked: false },
-    { id: 7, name: 'Sophia Miller', role: 'UI Designer', rating: 5, checked: true },
-    { id: 8, name: 'Liam Garcia', role: 'Full Stack Dev', rating: 4, checked: false },
-    { id: 9, name: 'Isabella Martinez', role: 'QA Engineer', rating: 5, checked: true }
-  ]);
+  const { language, t } = useLanguage();
+  const [state, setState] = useState({
+    loading: true,
+    error: '',
+    requests: [],
+    agreements: [],
+    reviews: [],
+    reviewStats: null,
+    notificationStats: null,
+  });
 
-  const handleGenerateReport = () => {
-    alert("Report generation started. You will be notified when it is ready.");
+  const cachedProfile = readCachedModelProfile();
+
+  const loadDashboard = async () => {
+    setState((current) => ({ ...current, loading: true, error: '' }));
+
+    try {
+      const [requestsRaw, agreementsRaw, reviewsRaw, reviewStats, notificationStats] = await Promise.all([
+        modelApi.getRequests({ page: 0, size: 4, status: '' }),
+        modelApi.getAgreements({ page: 0, size: 4, status: '' }),
+        modelApi.getReviews({ page: 0, size: 4 }),
+        modelApi.getReviewStats(),
+        modelApi.getNotificationStats(),
+      ]);
+
+      setState({
+        loading: false,
+        error: '',
+        requests: normalizePaginatedResponse(requestsRaw, { fallbackPage: 0, fallbackSize: 4 }).items,
+        agreements: normalizePaginatedResponse(agreementsRaw, { fallbackPage: 0, fallbackSize: 4 }).items,
+        reviews: normalizePaginatedResponse(reviewsRaw, { fallbackPage: 0, fallbackSize: 4 }).items,
+        reviewStats,
+        notificationStats,
+      });
+    } catch (error) {
+      setState((current) => ({
+        ...current,
+        loading: false,
+        error: error?.message || 'Failed to load dashboard',
+      }));
+    }
   };
 
-  const toggleCandidate = (id) => {
-    setCandidates(prev => prev.map(c => 
-      c.id === id ? { ...c, checked: !c.checked } : c
-    ));
-  };
+  useEffect(() => {
+    loadDashboard();
+  }, []);
 
-  const selectFilter = (filter) => {
-    setSelectedFilter(filter);
-    setFilterDropdownOpen(false);
-  };
+  const metrics = useMemo(() => {
+    const pendingRequests = state.requests.filter((item) => item.requestStatus === 'PENDING').length;
+    const activeAgreements = state.agreements.filter((item) => !['COMPLETED', 'CANCELLED'].includes(item.agreementStatus)).length;
+
+    return [
+      { label: t.dashboard.pendingRequests, value: pendingRequests },
+      { label: t.dashboard.activeAgreements, value: activeAgreements },
+      { label: t.dashboard.averageRating, value: formatNumber(state.reviewStats?.ratingAvg || 0, language) },
+      { label: t.dashboard.unreadNotifications, value: formatNumber(state.notificationStats?.unread || 0, language) },
+    ];
+  }, [language, state.agreements, state.notificationStats?.unread, state.requests, state.reviewStats?.ratingAvg, t.dashboard]);
+
+  const reviewBreakdown = [
+    { stars: 5, count: state.reviewStats?.fiveStarCount || 0 },
+    { stars: 4, count: state.reviewStats?.fourStarCount || 0 },
+    { stars: 3, count: state.reviewStats?.threeStarCount || 0 },
+    { stars: 2, count: state.reviewStats?.twoStarCount || 0 },
+    { stars: 1, count: state.reviewStats?.oneStarCount || 0 },
+  ];
+
+  const typeBreakdown = state.notificationStats?.countsByType || [];
 
   return (
-    <div className="dashboard-page">
-      <div className="page-header">
-        <h1 className="h1">Dashboard</h1>
-        <div className="header-actions">
-          <div style={{ position: 'relative' }}>
-            <button 
-              className="btn btn-outline" 
-              onClick={() => setFilterDropdownOpen(!filterDropdownOpen)}
-            >
-              {selectedFilter} ▾
-            </button>
-            {filterDropdownOpen && (
-              <div className="dropdown-menu">
-                <button className="dropdown-item" onClick={() => selectFilter('Today')}>Today</button>
-                <button className="dropdown-item" onClick={() => selectFilter('Last 7 Days')}>Last 7 Days</button>
-                <button className="dropdown-item" onClick={() => selectFilter('Last 30 Days')}>Last 30 Days</button>
-                <button className="dropdown-item" onClick={() => selectFilter('This Year')}>This Year</button>
-              </div>
-            )}
-          </div>
-          <button className="btn btn-primary" onClick={handleGenerateReport}>+ Generate Report</button>
-        </div>
-      </div>
+    <div className="page-stack">
+      <SectionIntro
+        eyebrow={t.dashboard.eyebrow}
+        title={t.dashboard.title}
+        subtitle={t.dashboard.subtitle}
+        actions={(
+          <button type="button" className="button secondary" onClick={loadDashboard}>
+            {t.common.reload}
+          </button>
+        )}
+      />
 
-      <div className="dashboard-grid">
-        <div className="dashboard-main">
-          <div className="grid grid-cols-2 gap-6">
-            <div className="card stat-card">
-              <div className="stat-header">
-                <h3 className="h3">Total Users</h3>
-                <span className="badge badge-success">+5%</span>
-              </div>
-              <div className="stat-value">12.3k</div>
-              <ChartPlaceholder color="var(--primary-color)" points={[10, 15, 8, 25, 20, 30, 25]} />
-            </div>
-            <div className="card stat-card">
-              <div className="stat-header">
-                <h3 className="h3">Revenue</h3>
-                <span className="badge badge-success">+15%</span>
-              </div>
-              <div className="stat-value">$12.4k</div>
-              <ChartPlaceholder color="var(--success-color)" points={[15, 10, 20, 15, 30, 25, 35]} />
-            </div>
-          </div>
-          
-          <div className="card mt-6 main-chart-card">
-            <div className="chart-header">
-              <h3 className="h3">Activity Overview</h3>
-              <div className="chart-legend">
-                <span className="legend-item"><span className="dot primary"></span>Users</span>
-                <span className="legend-item"><span className="dot success"></span>Revenue</span>
-              </div>
-            </div>
-            <div className="chart-body">
-              <div className="bar-chart">
-                {[40, 60, 30, 80, 50, 70, 90, 60, 45, 85, 55, 75].map((val, i) => (
-                  <div key={i} className="bar-group">
-                    <div className="bar primary-bar" style={{ height: `${val}%` }}></div>
-                    <div className="bar success-bar" style={{ height: `${val * 0.7}%` }}></div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+      {state.error ? (
+        <ErrorState
+          title={state.error}
+          description={t.common.retry}
+          onRetry={loadDashboard}
+          actionLabel={t.common.reload}
+        />
+      ) : null}
 
-        <div className="dashboard-sidebar">
-          <div className="card list-card">
-            <div className="list-header">
-              <h3 className="h3">Top Candidates</h3>
-              <button className="btn-icon" onClick={() => alert("Options clicked")}>⋮</button>
+      <section className="metric-grid">
+        {metrics.map((item) => (
+          <MetricCard key={item.label} label={item.label} value={item.value} />
+        ))}
+      </section>
+
+      <section className="content-grid two-column">
+        <article className="panel-card">
+          <div className="panel-head">
+            <div>
+              <h2>{t.dashboard.latestRequests}</h2>
             </div>
-            <ul className="candidate-list">
-              {candidates.map((candidate) => (
-                <li key={candidate.id} className="candidate-item">
-                  <div className="candidate-info">
-                    <input 
-                      type="checkbox" 
-                      className="custom-checkbox" 
-                      checked={candidate.checked} 
-                      onChange={() => toggleCandidate(candidate.id)} 
-                    />
-                    <div className="candidate-details">
-                      <div className={`candidate-name ${candidate.checked ? 'checked-item' : ''}`}>
-                        {candidate.name}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="candidate-rating">
-                    {'★'.repeat(candidate.rating)}{'☆'.repeat(5 - candidate.rating)}
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <Link className="text-link" to="/requests">{t.common.view}</Link>
           </div>
-        </div>
-      </div>
+
+          {state.loading ? <LoadingState label={t.common.loading} /> : null}
+
+          {!state.loading && state.requests.length === 0 ? (
+            <EmptyState title={t.dashboard.noRequests} />
+          ) : null}
+
+          <div className="stack-list">
+            {state.requests.map((request) => (
+              <article key={request.requestId} className="list-card">
+                <div className="list-card-row">
+                  <div>
+                    <strong>{request.title || request.requestNumber}</strong>
+                    <p>{request.brandName || request.requestNumber}</p>
+                  </div>
+                  <StatusBadge
+                    label={translateEnum(t, 'requestStatus', request.requestStatus)}
+                    tone={request.requestStatus === 'ACCEPTED' ? 'success' : request.requestStatus === 'REJECTED' ? 'danger' : 'warning'}
+                  />
+                </div>
+                <div className="meta-row">
+                  <span>{translateEnum(t, 'availableFor', request.availableFor)}</span>
+                  <span>{formatDateTime(request.deadline, language)}</span>
+                </div>
+              </article>
+            ))}
+          </div>
+        </article>
+
+        <article className="panel-card">
+          <div className="panel-head">
+            <h2>{t.dashboard.latestAgreements}</h2>
+            <Link className="text-link" to="/agreements">{t.common.view}</Link>
+          </div>
+
+          {state.loading ? <LoadingState label={t.common.loading} /> : null}
+
+          {!state.loading && state.agreements.length === 0 ? (
+            <EmptyState title={t.dashboard.noAgreements} />
+          ) : null}
+
+          <div className="stack-list">
+            {state.agreements.map((agreement) => (
+              <article key={agreement.agreementId} className="list-card">
+                <div className="list-card-row">
+                  <div>
+                    <strong>{agreement.title || agreement.agreementNumber}</strong>
+                    <p>{agreement.brandName || agreement.modelName || agreement.agreementNumber}</p>
+                  </div>
+                  <StatusBadge
+                    label={translateEnum(t, 'agreementStatus', agreement.agreementStatus)}
+                    tone={agreement.agreementStatus === 'COMPLETED' ? 'success' : agreement.agreementStatus === 'CANCELLED' ? 'danger' : 'primary'}
+                  />
+                </div>
+                <div className="meta-row">
+                  <span>{translateEnum(t, 'paymentStatus', agreement.paymentStatus)}</span>
+                  <span>{formatDateTime(agreement.deadline, language)}</span>
+                </div>
+              </article>
+            ))}
+          </div>
+        </article>
+      </section>
+
+      <section className="content-grid two-column">
+        <article className="panel-card">
+          <div className="panel-head">
+            <h2>{t.dashboard.reviewSnapshot}</h2>
+          </div>
+
+          {state.loading ? <LoadingState label={t.common.loading} /> : null}
+
+          {!state.loading && !state.reviewStats?.ratingCount ? (
+            <EmptyState title={t.dashboard.noReviews} />
+          ) : null}
+
+          <div className="rating-summary">
+            <div className="rating-pill">
+              <strong>{formatNumber(state.reviewStats?.ratingAvg || 0, language)}</strong>
+              <span>{t.common.average}</span>
+            </div>
+            <div className="rating-pill soft">
+              <strong>{formatNumber(state.reviewStats?.ratingCount || 0, language)}</strong>
+              <span>{t.common.total}</span>
+            </div>
+          </div>
+
+          <div className="rating-breakdown">
+            {reviewBreakdown.map((item) => (
+              <div key={item.stars} className="rating-row">
+                <span>{item.stars}★</span>
+                <div className="progress-track">
+                  <div
+                    className="progress-fill"
+                    style={{
+                      width: `${state.reviewStats?.ratingCount ? (item.count / state.reviewStats.ratingCount) * 100 : 0}%`,
+                    }}
+                  />
+                </div>
+                <strong>{item.count}</strong>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="panel-card">
+          <div className="panel-head">
+            <h2>{t.dashboard.notificationsSnapshot}</h2>
+            <Link className="text-link" to="/notifications">{t.common.view}</Link>
+          </div>
+
+          {state.loading ? <LoadingState label={t.common.loading} /> : null}
+
+          {!state.loading && typeBreakdown.length === 0 ? (
+            <EmptyState title={t.dashboard.noNotifications} />
+          ) : null}
+
+          <div className="stack-list">
+            {typeBreakdown.map((entry) => (
+              <article key={entry.type} className="simple-stat-row">
+                <span>{translateEnum(t, 'notificationType', entry.type)}</span>
+                <strong>{formatNumber(entry.count || 0, language)}</strong>
+              </article>
+            ))}
+          </div>
+        </article>
+      </section>
+
+      {!cachedProfile ? (
+        <article className="cta-card">
+          <div>
+            <p className="section-eyebrow">{t.modelSetup.eyebrow}</p>
+            <h2>{t.dashboard.completeProfileTitle}</h2>
+            <p>{t.dashboard.completeProfileText}</p>
+          </div>
+          <Link className="button primary" to="/model-setup">
+            {t.dashboard.completeProfileAction}
+          </Link>
+        </article>
+      ) : null}
     </div>
   );
 };

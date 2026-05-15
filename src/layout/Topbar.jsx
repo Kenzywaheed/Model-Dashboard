@@ -1,71 +1,117 @@
-import React, { useState, useRef, useEffect } from 'react';
-import NotificationsDropdown from '../components/NotificationsDropdown';
-import './Topbar.css';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import { useLanguage } from '../hooks/useLanguage';
+import { usePalette } from '../hooks/usePalette';
+import { modelApi } from '../services/api';
+import { BellIcon, GlobeIcon, LogoutIcon, MenuIcon, PanelIcon, PaletteIcon } from '../components/Icons';
 
-const Topbar = ({ toggleSidebar }) => {
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState([
-    { id: 1, text: 'New candidate applied for UI Designer', time: '5m ago', icon: '👤', unread: true },
-    { id: 2, text: 'System update completed successfully', time: '1h ago', icon: '⚙️', unread: true },
-    { id: 3, text: 'Meeting with the design team in 30 mins', time: '2h ago', icon: '📅', unread: false },
-  ]);
-  
-  const notifRef = useRef(null);
+const Topbar = ({ isSidebarCollapsed, onOpenSidebar, onToggleCollapse }) => {
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const { language, setLanguage, t } = useLanguage();
+  const { palette } = usePalette();
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (notifRef.current && !notifRef.current.contains(event.target)) {
-        setShowNotifications(false);
+    let active = true;
+
+    const loadStats = async () => {
+      try {
+        const data = await modelApi.getNotificationStats();
+
+        if (active) {
+          setUnreadCount(Number(data?.unread || 0));
+        }
+      } catch {
+        if (active) {
+          setUnreadCount(0);
+        }
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
-  const handleMarkAllRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, unread: false })));
-  };
+    loadStats();
 
-  const hasUnread = notifications.some(n => n.unread);
+    return () => {
+      active = false;
+    };
+  }, [pathname]);
+
+  const pageTitle = useMemo(() => {
+    const map = {
+      '/dashboard': t.nav.dashboard,
+      '/model-setup': t.nav.modelSetup,
+      '/requests': t.nav.requests,
+      '/agreements': t.nav.agreements,
+      '/reviews': t.nav.reviews,
+      '/notifications': t.nav.notifications,
+      '/setup/palette': t.nav.palette,
+    };
+
+    return map[pathname] || t.common.appName;
+  }, [pathname, t]);
 
   return (
     <header className="topbar">
       <div className="topbar-left">
-        <button className="menu-btn d-lg-none" onClick={toggleSidebar}>
-          ☰
+        <button type="button" className="icon-button mobile-only" onClick={onOpenSidebar}>
+          <MenuIcon className="icon-sm" />
         </button>
-        <div className="search-container">
-          <span className="search-icon">🔍</span>
-          <input type="text" placeholder="Search..." className="search-input" />
+
+        <button type="button" className="icon-button desktop-only" onClick={onToggleCollapse}>
+          <PanelIcon className={`icon-sm ${isSidebarCollapsed ? 'collapsed-icon' : ''}`} />
+        </button>
+
+        <div>
+          <p className="topbar-label">{t.common.workspace}</p>
+          <h1 className="topbar-title">{pageTitle}</h1>
         </div>
       </div>
-      
+
       <div className="topbar-right">
-        <div className="notification-wrapper" ref={notifRef} style={{ position: 'relative' }}>
-          <button 
-            className="topbar-btn" 
-            onClick={() => setShowNotifications(!showNotifications)}
-          >
-            <span className="icon">🔔</span>
-            {hasUnread && <span className="badge-indicator"></span>}
-          </button>
-          
-          {showNotifications && (
-            <NotificationsDropdown 
-              notifications={notifications} 
-              onClose={() => setShowNotifications(false)}
-              onMarkAllRead={handleMarkAllRead}
-            />
-          )}
-        </div>
-        
-        <div className="user-profile">
-          <img 
-            src="https://ui-avatars.com/api/?name=Admin&background=4f46e5&color=fff" 
-            alt="User" 
-            className="avatar" 
+        <Link to="/notifications" className="icon-button notification-button">
+          <BellIcon className="icon-sm" />
+          {unreadCount > 0 ? <span className="notification-count">{unreadCount}</span> : null}
+        </Link>
+
+        <Link to="/setup/palette" className="palette-pill">
+          <PaletteIcon className="icon-sm" />
+          <span
+            className="palette-swatch"
+            style={{ background: `linear-gradient(135deg, ${palette.primary}, ${palette.primaryDark})` }}
           />
+        </Link>
+
+        <button
+          type="button"
+          className="topbar-chip"
+          onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}
+        >
+          <GlobeIcon className="icon-sm" />
+          <span>{language === 'en' ? 'AR' : 'EN'}</span>
+        </button>
+
+        <div className="topbar-user">
+          <div className="user-avatar">
+            {String(user?.name || user?.email || 'M').charAt(0).toUpperCase()}
+          </div>
+          <div className="user-copy">
+            <strong>{user?.name || 'Model User'}</strong>
+            <span>{user?.email || ''}</span>
+          </div>
         </div>
+
+        <button
+          type="button"
+          className="icon-button"
+          onClick={() => {
+            logout();
+            navigate('/login', { replace: true });
+          }}
+        >
+          <LogoutIcon className="icon-sm" />
+        </button>
       </div>
     </header>
   );
