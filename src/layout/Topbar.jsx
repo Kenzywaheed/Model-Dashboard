@@ -3,8 +3,26 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../hooks/useLanguage';
-import { modelApi, readCachedModelProfile } from '../services/api';
+import { PROFILE_CACHE_UPDATED_EVENT, modelApi, readCachedModelProfile } from '../services/api';
 import { BellIcon, GlobeIcon, LogoutIcon, MenuIcon, PanelIcon } from '../components/Icons';
+
+const getProfileImageUrl = (profile, user) => {
+  const candidates = [
+    profile?.customer?.profileImageUrl,
+    profile?.profileImageUrl,
+    profile?.profileImage,
+    profile?.avatarUrl,
+    profile?.imageUrl,
+    profile?.modelImages?.[0],
+    user?.customer?.profileImageUrl,
+    user?.profileImageUrl,
+    user?.profileImage,
+    user?.avatarUrl,
+    user?.imageUrl,
+  ];
+
+  return candidates.find((value) => typeof value === 'string' && value.trim()) || '';
+};
 
 const Topbar = ({ isSidebarCollapsed, onOpenSidebar, onToggleCollapse }) => {
   const { pathname } = useLocation();
@@ -13,9 +31,14 @@ const Topbar = ({ isSidebarCollapsed, onOpenSidebar, onToggleCollapse }) => {
   const { language, setLanguage, t } = useLanguage();
   const { isDark, toggleTheme } = useTheme();
   const [unreadCount, setUnreadCount] = useState(0);
-  const cachedProfile = readCachedModelProfile();
+  const [cachedProfile, setCachedProfile] = useState(() => readCachedModelProfile());
+  const [avatarFailed, setAvatarFailed] = useState(false);
   const displayName = cachedProfile?.modelName || user?.name || 'Model User';
   const displayEmail = cachedProfile?.modelEmail || user?.email || '';
+  const profileImageUrl = useMemo(
+    () => getProfileImageUrl(cachedProfile, user),
+    [cachedProfile, user],
+  );
 
   useEffect(() => {
     let active = true;
@@ -40,6 +63,24 @@ const Topbar = ({ isSidebarCollapsed, onOpenSidebar, onToggleCollapse }) => {
       active = false;
     };
   }, [pathname]);
+
+  useEffect(() => {
+    const syncCachedProfile = () => {
+      setCachedProfile(readCachedModelProfile());
+    };
+
+    window.addEventListener('storage', syncCachedProfile);
+    window.addEventListener(PROFILE_CACHE_UPDATED_EVENT, syncCachedProfile);
+
+    return () => {
+      window.removeEventListener('storage', syncCachedProfile);
+      window.removeEventListener(PROFILE_CACHE_UPDATED_EVENT, syncCachedProfile);
+    };
+  }, []);
+
+  useEffect(() => {
+    setAvatarFailed(false);
+  }, [profileImageUrl]);
 
   const pageTitle = useMemo(() => {
     const map = {
@@ -91,7 +132,16 @@ const Topbar = ({ isSidebarCollapsed, onOpenSidebar, onToggleCollapse }) => {
 
         <div className="topbar-user">
           <div className="user-avatar">
-            {String(displayName || displayEmail || 'M').charAt(0).toUpperCase()}
+            {profileImageUrl && !avatarFailed ? (
+              <img
+                src={profileImageUrl}
+                alt={displayName}
+                className="user-avatar-image"
+                onError={() => setAvatarFailed(true)}
+              />
+            ) : (
+              String(displayName || displayEmail || 'M').charAt(0).toUpperCase()
+            )}
           </div>
           <div className="user-copy">
             <strong>{displayName}</strong>

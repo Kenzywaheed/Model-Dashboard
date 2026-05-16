@@ -5,6 +5,7 @@ const MODEL_ME_PATH = '/api/v1/model/me';
 const SESSION_STORAGE_KEY = 'model-dashboard-session';
 const SESSION_UPDATED_EVENT = 'model-dashboard-session-updated';
 const PROFILE_CACHE_KEY = 'model-dashboard-profile-cache';
+const PROFILE_CACHE_UPDATED_EVENT = 'model-dashboard-profile-cache-updated';
 const BRAND_DASHBOARD_URL = import.meta.env.VITE_BRAND_DASHBOARD_URL || '/brand-dashboard';
 
 const findFirstArrayInObject = (value, seen = new Set()) => {
@@ -253,6 +254,22 @@ export const readStoredSession = () => {
   return rawSession ? createNormalizedSession(rawSession, rawSession?.user) : null;
 };
 
+const dispatchProfileCacheUpdated = (profile) => {
+  window.dispatchEvent(new CustomEvent(PROFILE_CACHE_UPDATED_EVENT, { detail: profile || null }));
+};
+
+const setCachedModelProfile = (profile) => {
+  if (!profile) {
+    localStorage.removeItem(PROFILE_CACHE_KEY);
+    dispatchProfileCacheUpdated(null);
+    return null;
+  }
+
+  localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(profile));
+  dispatchProfileCacheUpdated(profile);
+  return profile;
+};
+
 export const writeStoredSession = (session) => {
   const normalizedSession = createNormalizedSession(session, session?.user);
 
@@ -266,7 +283,7 @@ export const writeStoredSession = (session) => {
   const nextEmail = String(normalizedSession.user?.email || '').trim().toLowerCase();
 
   if ((previousEmail && nextEmail && previousEmail !== nextEmail) || !normalizedSession.user?.hasModelProfile) {
-    localStorage.removeItem(PROFILE_CACHE_KEY);
+    setCachedModelProfile(null);
   }
 
   localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(normalizedSession));
@@ -280,15 +297,13 @@ export const clearStoredSession = () => {
   localStorage.removeItem(SESSION_STORAGE_KEY);
   localStorage.removeItem('token');
   localStorage.removeItem('refreshToken');
-  localStorage.removeItem(PROFILE_CACHE_KEY);
+  setCachedModelProfile(null);
   window.dispatchEvent(new CustomEvent(SESSION_UPDATED_EVENT, { detail: null }));
 };
 
 export const readCachedModelProfile = () => readJsonStorage(PROFILE_CACHE_KEY);
 
-export const writeCachedModelProfile = (profile) => {
-  localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(profile));
-};
+export const writeCachedModelProfile = (profile) => setCachedModelProfile(profile);
 
 const normalizeAvailableForEntry = (entry = {}) => {
   const availableFor = String(entry?.availableFor || '').trim().toUpperCase();
@@ -576,4 +591,4 @@ export const modelApi = {
   }),
 };
 
-export { API_BASE_URL, SESSION_UPDATED_EVENT };
+export { API_BASE_URL, PROFILE_CACHE_UPDATED_EVENT, SESSION_UPDATED_EVENT };
