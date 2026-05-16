@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../hooks/useLanguage';
-import { usePalette } from '../hooks/usePalette';
 import { modelApi } from '../services/api';
-import { BellIcon, GlobeIcon, LogoutIcon, MenuIcon, PanelIcon, PaletteIcon } from '../components/Icons';
+import { BellIcon, GlobeIcon, LogoutIcon, MenuIcon, PanelIcon } from '../components/Icons';
 
 const Topbar = ({ isSidebarCollapsed, onOpenSidebar, onToggleCollapse }) => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { language, setLanguage, t } = useLanguage();
-  const { palette } = usePalette();
+  const { isDark, toggleTheme } = useTheme();
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
@@ -41,12 +41,10 @@ const Topbar = ({ isSidebarCollapsed, onOpenSidebar, onToggleCollapse }) => {
   const pageTitle = useMemo(() => {
     const map = {
       '/dashboard': t.nav.dashboard,
-      '/model-setup': t.nav.modelSetup,
       '/requests': t.nav.requests,
       '/agreements': t.nav.agreements,
       '/reviews': t.nav.reviews,
       '/notifications': t.nav.notifications,
-      '/setup/palette': t.nav.palette,
     };
 
     return map[pathname] || t.common.appName;
@@ -75,13 +73,9 @@ const Topbar = ({ isSidebarCollapsed, onOpenSidebar, onToggleCollapse }) => {
           {unreadCount > 0 ? <span className="notification-count">{unreadCount}</span> : null}
         </Link>
 
-        <Link to="/setup/palette" className="palette-pill">
-          <PaletteIcon className="icon-sm" />
-          <span
-            className="palette-swatch"
-            style={{ background: `linear-gradient(135deg, ${palette.primary}, ${palette.primaryDark})` }}
-          />
-        </Link>
+        <button type="button" className="topbar-chip" onClick={toggleTheme}>
+          <span>{isDark ? t.common.lightMode : t.common.darkMode}</span>
+        </button>
 
         <button
           type="button"

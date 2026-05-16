@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../hooks/useLanguage';
+import { useTheme } from '../context/ThemeContext';
+import { getBrandDashboardUrl, getUserHomePath } from '../services/api';
+import loginHero from '../assets/login-hero-fashion.png';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -41,10 +44,28 @@ const mapOtpError = (t, errorMessage, remainingAttempts) => {
   return errorMessage || t.auth.unexpectedOtpError;
 };
 
+const routeAuthenticatedUser = (user, navigate) => {
+  const homePath = getUserHomePath(user);
+
+  if (homePath) {
+    navigate('/setup/palette', {
+      replace: true,
+      state: {
+        fromLogin: true,
+        nextPath: homePath,
+      },
+    });
+    return;
+  }
+
+  window.location.assign(getBrandDashboardUrl());
+};
+
 const Login = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, requestOtp, verifyOtp, pendingOtpCode } = useAuth();
+  const { isAuthenticated, requestOtp, verifyOtp, pendingOtpCode, user } = useAuth();
   const { language, setLanguage, t } = useLanguage();
+  const { isDark, toggleTheme } = useTheme();
   const [step, setStep] = useState('email');
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
@@ -53,9 +74,9 @@ const Login = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard', { replace: true });
+      routeAuthenticatedUser(user, navigate);
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, user]);
 
   const helperOtp = useMemo(() => pendingOtpCode || '', [pendingOtpCode]);
 
@@ -106,15 +127,21 @@ const Login = () => {
       return;
     }
 
-    navigate('/setup/palette', { replace: true });
+    routeAuthenticatedUser(result.session?.user, navigate);
   };
 
   return (
     <div className="auth-layout">
       <section className="auth-visual">
-        <div className="visual-badge">{t.auth.sessionReady}</div>
-        <h1>{t.auth.title}</h1>
-        <p>{t.auth.subtitle}</p>
+        <div className="auth-visual-media" aria-hidden="true">
+          <img className="auth-visual-image" src={loginHero} alt="" />
+        </div>
+        <div className="auth-visual-overlay" />
+        <div className="auth-visual-content">
+          <div className="visual-badge">{t.auth.sessionReady}</div>
+          <h1>{t.auth.title}</h1>
+          <p>{t.auth.subtitle}</p>
+        </div>
       </section>
 
       <main className="auth-form-shell">
@@ -124,13 +151,18 @@ const Login = () => {
               <p className="section-eyebrow">{t.common.appName}</p>
               <h2 className="auth-card-title">{t.auth.title}</h2>
             </div>
-            <button
-              type="button"
-              className="topbar-chip"
-              onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}
-            >
-              {language === 'en' ? 'AR' : 'EN'}
-            </button>
+            <div className="auth-header-actions">
+              <button type="button" className="topbar-chip" onClick={toggleTheme}>
+                {isDark ? t.common.lightMode : t.common.darkMode}
+              </button>
+              <button
+                type="button"
+                className="topbar-chip"
+                onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}
+              >
+                {language === 'en' ? 'AR' : 'EN'}
+              </button>
+            </div>
           </div>
 
           {error ? <div className="banner error">{error}</div> : null}

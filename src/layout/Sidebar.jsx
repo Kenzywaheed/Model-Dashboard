@@ -3,8 +3,6 @@ import { useLanguage } from '../hooks/useLanguage';
 import {
   AgreementIcon,
   DashboardIcon,
-  PaletteIcon,
-  ProfileIcon,
   RequestIcon,
   ReviewIcon,
   BellIcon,
@@ -16,12 +14,10 @@ const Sidebar = ({ isOpen, isCollapsed, onClose }) => {
 
   const navItems = [
     { path: '/dashboard', label: t.nav.dashboard, icon: DashboardIcon },
-    { path: '/model-setup', label: t.nav.modelSetup, icon: ProfileIcon },
     { path: '/requests', label: t.nav.requests, icon: RequestIcon },
     { path: '/agreements', label: t.nav.agreements, icon: AgreementIcon },
     { path: '/reviews', label: t.nav.reviews, icon: ReviewIcon },
     { path: '/notifications', label: t.nav.notifications, icon: BellIcon },
-    { path: '/setup/palette', label: t.nav.palette, icon: PaletteIcon },
   ];
 
   return (

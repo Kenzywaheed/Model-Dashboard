@@ -1,16 +1,97 @@
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { CheckIcon } from '../components/Icons';
 import { SectionIntro } from '../components/AppPrimitives';
+import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../hooks/useLanguage';
 import { usePalette } from '../hooks/usePalette';
 
 const PaletteSetup = () => {
+  const location = useLocation();
   const navigate = useNavigate();
-  const { t } = useLanguage();
+  const {
+    user,
+    homePath,
+    logout,
+    refreshSessionUser,
+    canAccessModelDashboard,
+  } = useAuth();
+  const { language, setLanguage, t } = useLanguage();
+  const { isDark, toggleTheme } = useTheme();
   const { palette, palettes, setPalette } = usePalette();
+  const [syncingSession, setSyncingSession] = useState(Boolean(location.state?.fromOnboarding));
+  const destinationPath = location.state?.nextPath || homePath || '/dashboard';
+  const actionLabel = syncingSession
+    ? t.common.loading
+    : destinationPath === '/dashboard'
+      ? t.palettePage.action
+      : t.common.continue;
+
+  useEffect(() => {
+    if (canAccessModelDashboard && !location.state?.fromOnboarding && !location.state?.fromLogin) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [canAccessModelDashboard, location.state, navigate]);
+
+  useEffect(() => {
+    let active = true;
+
+    const syncOnboardingSession = async () => {
+      if (!location.state?.fromOnboarding || canAccessModelDashboard) {
+        if (active) {
+          setSyncingSession(false);
+        }
+        return;
+      }
+
+      try {
+        await refreshSessionUser();
+      } finally {
+        if (active) {
+          setSyncingSession(false);
+        }
+      }
+    };
+
+    syncOnboardingSession();
+
+    return () => {
+      active = false;
+    };
+  }, [canAccessModelDashboard, location.state, refreshSessionUser]);
 
   return (
     <div className="standalone-page">
+      <div className="standalone-head">
+        <div>
+          <p className="section-eyebrow">{t.common.appName}</p>
+          <strong className="standalone-user">{user?.email || ''}</strong>
+        </div>
+        <div className="standalone-actions">
+          <button type="button" className="topbar-chip" onClick={toggleTheme}>
+            {isDark ? t.common.lightMode : t.common.darkMode}
+          </button>
+          <button
+            type="button"
+            className="topbar-chip"
+            onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}
+          >
+            {language === 'en' ? 'AR' : 'EN'}
+          </button>
+          <button
+            type="button"
+            className="topbar-chip"
+            onClick={() => {
+              logout();
+              navigate('/login', { replace: true });
+            }}
+          >
+            {t.common.logout}
+          </button>
+        </div>
+      </div>
+
       <SectionIntro
         eyebrow={t.palettePage.eyebrow}
         title={t.palettePage.title}
@@ -20,7 +101,11 @@ const PaletteSetup = () => {
       <div className="palette-grid">
         {palettes.map((option) => {
           const active = option.id === palette.id;
-          const copy = t.palettePage.palettes[option.id];
+          const translatedCopy = t.palettePage.palettes?.[option.id];
+          const copy = translatedCopy || {
+            name: option.label?.[language] || option.label?.en || option.id,
+            description: option.description?.[language] || option.description?.en || '',
+          };
 
           return (
             <button
@@ -50,8 +135,13 @@ const PaletteSetup = () => {
 
       <div className="page-actions">
         <p className="helper-text">{t.palettePage.hint}</p>
-        <button type="button" className="button primary" onClick={() => navigate('/dashboard', { replace: true })}>
-          {t.palettePage.action}
+        <button
+          type="button"
+          className="button primary"
+          disabled={syncingSession}
+          onClick={() => navigate(destinationPath, { replace: true })}
+        >
+          {actionLabel}
         </button>
       </div>
     </div>

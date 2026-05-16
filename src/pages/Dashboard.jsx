@@ -9,11 +9,13 @@ import {
   StatusBadge,
 } from '../components/AppPrimitives';
 import { modelApi, normalizePaginatedResponse, readCachedModelProfile } from '../services/api';
+import { useAuth } from '../hooks/useAuth';
 import { formatDateTime, formatNumber, translateEnum } from '../utils/formatters';
 import { useLanguage } from '../hooks/useLanguage';
 
 const Dashboard = () => {
   const { language, t } = useLanguage();
+  const { user } = useAuth();
   const [state, setState] = useState({
     loading: true,
     error: '',
@@ -246,7 +248,7 @@ const Dashboard = () => {
         </article>
       </section>
 
-      {!cachedProfile ? (
+      {!user?.hasModelProfile && !cachedProfile ? (
         <article className="cta-card">
           <div>
             <p className="section-eyebrow">{t.modelSetup.eyebrow}</p>

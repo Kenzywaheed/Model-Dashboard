@@ -4,15 +4,16 @@ import {
   authApi,
   canAccessModelDashboard,
   clearStoredSession,
+  getUserHomePath,
+  isModelOnboardingUser,
   normalizeAuthUser,
   readStoredSession,
   refreshStoredSession,
+  resolveUserDashboard,
   writeStoredSession,
 } from '../services/api';
 
 const AuthContext = createContext(null);
-
-const MODEL_DASHBOARD_ONLY_ERROR = 'This email is not allowed to access the model dashboard';
 
 const extractMessage = (error, fallbackMessage) => error?.data?.message || error?.message || fallbackMessage;
 
@@ -45,10 +46,9 @@ export const AuthProvider = ({ children }) => {
 
   const saveSession = useCallback((nextSession) => {
     const normalizedUser = normalizeAuthUser(nextSession?.user, nextSession?.user);
-    console.log(normalizeAuthUser);
-    
-    if (!nextSession?.accessToken || !canAccessModelDashboard(normalizedUser)) {
-      throw new Error(MODEL_DASHBOARD_ONLY_ERROR);
+
+    if (!nextSession?.accessToken) {
+      throw new Error('No access token returned from authentication');
     }
 
     const normalizedSession = writeStoredSession({
@@ -59,7 +59,7 @@ export const AuthProvider = ({ children }) => {
     });
 
     if (!normalizedSession) {
-      throw new Error(MODEL_DASHBOARD_ONLY_ERROR);
+      throw new Error('Failed to create a valid authenticated session');
     }
 
     setSession(normalizedSession);
@@ -73,6 +73,28 @@ export const AuthProvider = ({ children }) => {
       user,
     });
   }, [saveSession]);
+
+  const refreshSessionUser = useCallback(async () => {
+    const storedSession = readStoredSession();
+
+    if (!storedSession?.accessToken) {
+      clearStoredSession();
+      setSession(null);
+      return null;
+    }
+
+    const refreshedSession = await refreshStoredSession(storedSession);
+
+    if (!refreshedSession) {
+      clearStoredSession();
+      setSession(null);
+      return null;
+    }
+
+    const nextSession = await hydrateSessionUser(refreshedSession);
+    setSession(nextSession);
+    return nextSession;
+  }, [hydrateSessionUser]);
 
   useEffect(() => {
     let active = true;
@@ -92,7 +114,7 @@ export const AuthProvider = ({ children }) => {
         const refreshedSession = await refreshStoredSession(storedSession);
 
         if (!refreshedSession) {
-          throw new Error(MODEL_DASHBOARD_ONLY_ERROR);
+          throw new Error('No active session');
         }
 
         const nextSession = await hydrateSessionUser(refreshedSession);
@@ -167,14 +189,6 @@ export const AuthProvider = ({ children }) => {
 
       const nextUser = normalizeAuthUser(data?.user, { email: normalizedEmail });
 
-      if (!canAccessModelDashboard(nextUser)) {
-        return {
-          success: false,
-          error: MODEL_DASHBOARD_ONLY_ERROR,
-          remainingAttempts: data?.remainingAttempts,
-        };
-      }
-
       const nextSession = saveSession({
         accessToken: data?.accessToken || '',
         refreshToken: data?.refreshToken || '',
@@ -209,10 +223,14 @@ export const AuthProvider = ({ children }) => {
     requestOtp,
     verifyOtp,
     logout,
+    refreshSessionUser,
     isAuthenticated: Boolean(session?.accessToken),
     canAccessModelDashboard: canAccessModelDashboard(session?.user),
+    isModelOnboarding: isModelOnboardingUser(session?.user),
+    userDashboard: resolveUserDashboard(session?.user),
+    homePath: getUserHomePath(session?.user),
     defaultDashboard: session?.user?.defaultDashboard || null,
-  }), [loading, logout, pendingEmail, pendingOtpCode, requestOtp, session, verifyOtp]);
+  }), [loading, logout, pendingEmail, pendingOtpCode, refreshSessionUser, requestOtp, session, verifyOtp]);
 
   return (
     <AuthContext.Provider value={value}>

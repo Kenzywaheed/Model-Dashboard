@@ -4,6 +4,7 @@ const AUTH_ME_PATH = '/api/v1/auth/me';
 const SESSION_STORAGE_KEY = 'model-dashboard-session';
 const SESSION_UPDATED_EVENT = 'model-dashboard-session-updated';
 const PROFILE_CACHE_KEY = 'model-dashboard-profile-cache';
+const BRAND_DASHBOARD_URL = import.meta.env.VITE_BRAND_DASHBOARD_URL || '/brand-dashboard';
 
 const findFirstArrayInObject = (value, seen = new Set()) => {
   if (Array.isArray(value)) {
@@ -86,6 +87,57 @@ const readJsonStorage = (key) => {
 };
 
 const normalizeRole = (role) => String(role || '').trim().toUpperCase();
+
+export const resolveUserDashboard = (value = {}) => {
+  if (!value) {
+    return null;
+  }
+
+  const defaultDashboard = String(value.defaultDashboard || '').trim().toUpperCase();
+
+  if (['BRAND', 'MODEL', 'MODEL_ONBOARDING'].includes(defaultDashboard)) {
+    return defaultDashboard;
+  }
+
+  const role = normalizeRole(value.role);
+  const roles = extractTokenRoles(value);
+
+  if (role === 'BRAND_OWNER' || value.hasBrandProfile || value.canAccessBrandDashboard) {
+    return 'BRAND';
+  }
+
+  if (
+    value.hasModelProfile
+    || value.canAccessModelDashboard
+    || roles.some((entry) => entry.includes('MODEL'))
+  ) {
+    return 'MODEL';
+  }
+
+  if (role === 'CUSTOMER') {
+    return 'MODEL_ONBOARDING';
+  }
+
+  return null;
+};
+
+export const isModelOnboardingUser = (value = {}) => resolveUserDashboard(value) === 'MODEL_ONBOARDING';
+
+export const getUserHomePath = (value = {}) => {
+  const dashboard = resolveUserDashboard(value);
+
+  if (dashboard === 'MODEL') {
+    return '/dashboard';
+  }
+
+  if (dashboard === 'MODEL_ONBOARDING') {
+    return '/onboarding/model-profile';
+  }
+
+  return null;
+};
+
+export const getBrandDashboardUrl = () => BRAND_DASHBOARD_URL;
 
 export const parseJwtPayload = (token) => {
   if (!token || typeof token !== 'string') {
@@ -175,13 +227,7 @@ export const canAccessModelDashboard = (value = {}) => {
     return value.canAccessModelDashboard;
   }
 
-  const roles = extractTokenRoles(value);
-
-  return Boolean(
-    value.hasModelProfile
-    || value.defaultDashboard === 'MODEL'
-    || roles.some((role) => role.includes('MODEL')),
-  );
+  return resolveUserDashboard(value) === 'MODEL';
 };
 
 const createNormalizedSession = (session = {}, fallbackUser = {}) => {
@@ -189,7 +235,7 @@ const createNormalizedSession = (session = {}, fallbackUser = {}) => {
   const refreshToken = session?.refreshToken || '';
   const user = normalizeAuthUser(session?.user, fallbackUser);
 
-  if (!accessToken || !canAccessModelDashboard(user)) {
+  if (!accessToken) {
     return null;
   }
 
@@ -214,6 +260,14 @@ export const writeStoredSession = (session) => {
     return null;
   }
 
+  const previousSession = readJsonStorage(SESSION_STORAGE_KEY);
+  const previousEmail = String(previousSession?.user?.email || '').trim().toLowerCase();
+  const nextEmail = String(normalizedSession.user?.email || '').trim().toLowerCase();
+
+  if ((previousEmail && nextEmail && previousEmail !== nextEmail) || !normalizedSession.user?.hasModelProfile) {
+    localStorage.removeItem(PROFILE_CACHE_KEY);
+  }
+
   localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(normalizedSession));
   localStorage.setItem('token', normalizedSession.accessToken || '');
   localStorage.setItem('refreshToken', normalizedSession.refreshToken || '');
@@ -225,6 +279,7 @@ export const clearStoredSession = () => {
   localStorage.removeItem(SESSION_STORAGE_KEY);
   localStorage.removeItem('token');
   localStorage.removeItem('refreshToken');
+  localStorage.removeItem(PROFILE_CACHE_KEY);
   window.dispatchEvent(new CustomEvent(SESSION_UPDATED_EVENT, { detail: null }));
 };
 
