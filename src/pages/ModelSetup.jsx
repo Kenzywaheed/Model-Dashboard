@@ -1,33 +1,37 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { EmptyState, SectionIntro } from '../components/AppPrimitives';
+import { BrandLockup, EmptyState, LoadingState, SectionIntro } from '../components/AppPrimitives';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../hooks/useLanguage';
-import { modelApi, readCachedModelProfile, writeCachedModelProfile } from '../services/api';
+import { modelApi, normalizeModelProfile, readCachedModelProfile, writeCachedModelProfile } from '../services/api';
 import { translateEnum } from '../utils/formatters';
 
 const BODY_TYPES = ['SLIM', 'ATHLETIC', 'AVERAGE', 'CURVY', 'PLUS_SIZE'];
 const SKIN_TONES = ['FAIR', 'LIGHT', 'MEDIUM', 'OLIVE', 'TAN', 'DARK'];
 const AVAILABLE_FOR = ['PHOTO_SHOOT', 'FASHION_SHOW', 'PRODUCT_MODELING', 'SOCIAL_MEDIA_CONTENT', 'BRAND_CAMPAIGN', 'VIDEO_SHOOT'];
 
-const createAvailabilityRow = () => ({
+const createAvailabilityRow = (entry = {}) => ({
   key: `${Date.now()}-${Math.random()}`,
-  availableFor: 'PHOTO_SHOOT',
-  pricePerSession: '',
+  availableFor: entry.availableFor || 'PHOTO_SHOOT',
+  pricePerSession: entry.pricePerSession ?? '',
 });
 
-const createInitialProfileForm = (cachedProfile = {}) => ({
-  city: cachedProfile.city || '',
-  age: cachedProfile.age || '',
-  heightCm: cachedProfile.heightCm || '',
-  weightKg: cachedProfile.weightKg || '',
-  hairColor: cachedProfile.hairColor || '',
-  bodyType: cachedProfile.bodyType || 'ATHLETIC',
-  skinTone: cachedProfile.skinTone || 'MEDIUM',
-  bio: cachedProfile.bio || '',
-  files: [],
-});
+const createInitialProfileForm = (cachedProfile) => {
+  const profile = cachedProfile && typeof cachedProfile === 'object' ? cachedProfile : {};
+
+  return {
+    city: profile.city || '',
+    age: profile.age || '',
+    heightCm: profile.heightCm || '',
+    weightKg: profile.weightKg || '',
+    hairColor: profile.hairColor || '',
+    bodyType: profile.bodyType || 'ATHLETIC',
+    skinTone: profile.skinTone || 'MEDIUM',
+    bio: profile.bio || '',
+    files: [],
+  };
+};
 
 const getAvailabilityEntries = (availabilityRows = []) => availabilityRows
   .filter((row) => row.availableFor && row.pricePerSession !== '')
@@ -36,21 +40,30 @@ const getAvailabilityEntries = (availabilityRows = []) => availabilityRows
     pricePerSession: Number(row.pricePerSession),
   }));
 
+const createAvailabilityRows = (profile) => (
+  Array.isArray(profile?.availableFor) && profile.availableFor.length > 0
+    ? profile.availableFor.map((entry) => createAvailabilityRow(entry))
+    : [createAvailabilityRow()]
+);
+
 const ModelSetup = ({ variant = 'workspace' }) => {
   const navigate = useNavigate();
   const { user, logout, refreshSessionUser } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   const { isDark, toggleTheme } = useTheme();
-  const cachedProfile = readCachedModelProfile();
+  const profileTouchedRef = useRef(false);
+  const availabilityTouchedRef = useRef(false);
   const isOnboarding = variant === 'onboarding';
+  const [profileSnapshot, setProfileSnapshot] = useState(() => readCachedModelProfile());
   const [profileMessage, setProfileMessage] = useState('');
   const [availabilityMessage, setAvailabilityMessage] = useState('');
   const [error, setError] = useState('');
+  const [syncingProfile, setSyncingProfile] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingAvailability, setSavingAvailability] = useState(false);
   const [completingSetup, setCompletingSetup] = useState(false);
-  const [profileForm, setProfileForm] = useState(() => createInitialProfileForm(cachedProfile));
-  const [availabilityRows, setAvailabilityRows] = useState([createAvailabilityRow()]);
+  const [profileForm, setProfileForm] = useState(() => createInitialProfileForm(profileSnapshot));
+  const [availabilityRows, setAvailabilityRows] = useState(() => createAvailabilityRows(profileSnapshot));
 
   const resetBanners = () => {
     setProfileMessage('');
@@ -58,14 +71,78 @@ const ModelSetup = ({ variant = 'workspace' }) => {
     setError('');
   };
 
+  const applyProfileSnapshot = (profile, { overwriteForm = true, overwriteAvailability = true } = {}) => {
+    if (!profile) {
+      setProfileSnapshot(null);
+      return null;
+    }
+
+    const normalizedProfile = normalizeModelProfile(profile);
+
+    writeCachedModelProfile(normalizedProfile);
+    setProfileSnapshot(normalizedProfile);
+
+    if (overwriteForm) {
+      setProfileForm(createInitialProfileForm(normalizedProfile));
+    }
+
+    if (overwriteAvailability) {
+      setAvailabilityRows(createAvailabilityRows(normalizedProfile));
+    }
+
+    return normalizedProfile;
+  };
+
+  const syncProfileSnapshot = async ({ overwriteForm = true, overwriteAvailability = true } = {}) => {
+    const profile = await modelApi.getMeProfile();
+    return applyProfileSnapshot(profile, { overwriteForm, overwriteAvailability });
+  };
+
+  useEffect(() => {
+    let active = true;
+
+    const loadProfileSnapshot = async () => {
+      setSyncingProfile(true);
+
+      try {
+        const profile = await modelApi.getMeProfile();
+
+        if (!active) {
+          return;
+        }
+
+        applyProfileSnapshot(profile, {
+          overwriteForm: !profileTouchedRef.current,
+          overwriteAvailability: !availabilityTouchedRef.current,
+        });
+      } catch (loadError) {
+        if (active && loadError?.status === 404) {
+          setProfileSnapshot(null);
+        }
+      } finally {
+        if (active) {
+          setSyncingProfile(false);
+        }
+      }
+    };
+
+    loadProfileSnapshot();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const saveProfile = async () => {
     const response = await modelApi.createProfile({
       ...profileForm,
       files: Array.from(profileForm.files || []),
     });
 
-    writeCachedModelProfile(response);
-    return response;
+    return applyProfileSnapshot(response, {
+      overwriteForm: false,
+      overwriteAvailability: false,
+    });
   };
 
   const saveAvailability = async (entries) => {
@@ -79,6 +156,8 @@ const ModelSetup = ({ variant = 'workspace' }) => {
 
     try {
       await saveProfile();
+      profileTouchedRef.current = false;
+      await syncProfileSnapshot({ overwriteForm: true, overwriteAvailability: false });
       await refreshSessionUser();
       setProfileMessage(t.modelSetup.profileSaved);
     } catch (submitError) {
@@ -103,6 +182,8 @@ const ModelSetup = ({ variant = 'workspace' }) => {
 
     try {
       await saveAvailability(entries);
+      availabilityTouchedRef.current = false;
+      await syncProfileSnapshot({ overwriteForm: false, overwriteAvailability: true });
       setAvailabilityMessage(t.modelSetup.availabilitySaved);
     } catch (submitError) {
       setError(submitError?.message || 'Failed to save availability');
@@ -127,6 +208,9 @@ const ModelSetup = ({ variant = 'workspace' }) => {
     try {
       await saveProfile();
       await saveAvailability(entries);
+      profileTouchedRef.current = false;
+      availabilityTouchedRef.current = false;
+      await syncProfileSnapshot();
       navigate('/setup/palette', { replace: true, state: { fromOnboarding: true } });
     } catch (submitError) {
       setError(submitError?.message || 'Failed to finish setup');
@@ -147,7 +231,10 @@ const ModelSetup = ({ variant = 'workspace' }) => {
           <input
             className="field-input"
             value={profileForm.city}
-            onChange={(event) => setProfileForm((current) => ({ ...current, city: event.target.value }))}
+            onChange={(event) => {
+              profileTouchedRef.current = true;
+              setProfileForm((current) => ({ ...current, city: event.target.value }));
+            }}
           />
         </label>
 
@@ -157,7 +244,10 @@ const ModelSetup = ({ variant = 'workspace' }) => {
             className="field-input"
             type="number"
             value={profileForm.age}
-            onChange={(event) => setProfileForm((current) => ({ ...current, age: event.target.value }))}
+            onChange={(event) => {
+              profileTouchedRef.current = true;
+              setProfileForm((current) => ({ ...current, age: event.target.value }));
+            }}
           />
         </label>
 
@@ -167,7 +257,10 @@ const ModelSetup = ({ variant = 'workspace' }) => {
             className="field-input"
             type="number"
             value={profileForm.heightCm}
-            onChange={(event) => setProfileForm((current) => ({ ...current, heightCm: event.target.value }))}
+            onChange={(event) => {
+              profileTouchedRef.current = true;
+              setProfileForm((current) => ({ ...current, heightCm: event.target.value }));
+            }}
           />
         </label>
 
@@ -177,7 +270,10 @@ const ModelSetup = ({ variant = 'workspace' }) => {
             className="field-input"
             type="number"
             value={profileForm.weightKg}
-            onChange={(event) => setProfileForm((current) => ({ ...current, weightKg: event.target.value }))}
+            onChange={(event) => {
+              profileTouchedRef.current = true;
+              setProfileForm((current) => ({ ...current, weightKg: event.target.value }));
+            }}
           />
         </label>
 
@@ -186,7 +282,10 @@ const ModelSetup = ({ variant = 'workspace' }) => {
           <input
             className="field-input"
             value={profileForm.hairColor}
-            onChange={(event) => setProfileForm((current) => ({ ...current, hairColor: event.target.value }))}
+            onChange={(event) => {
+              profileTouchedRef.current = true;
+              setProfileForm((current) => ({ ...current, hairColor: event.target.value }));
+            }}
           />
         </label>
 
@@ -195,7 +294,10 @@ const ModelSetup = ({ variant = 'workspace' }) => {
           <select
             className="field-input"
             value={profileForm.bodyType}
-            onChange={(event) => setProfileForm((current) => ({ ...current, bodyType: event.target.value }))}
+            onChange={(event) => {
+              profileTouchedRef.current = true;
+              setProfileForm((current) => ({ ...current, bodyType: event.target.value }));
+            }}
           >
             {BODY_TYPES.map((type) => (
               <option key={type} value={type}>{translateEnum(t, 'bodyType', type)}</option>
@@ -208,7 +310,10 @@ const ModelSetup = ({ variant = 'workspace' }) => {
           <select
             className="field-input"
             value={profileForm.skinTone}
-            onChange={(event) => setProfileForm((current) => ({ ...current, skinTone: event.target.value }))}
+            onChange={(event) => {
+              profileTouchedRef.current = true;
+              setProfileForm((current) => ({ ...current, skinTone: event.target.value }));
+            }}
           >
             {SKIN_TONES.map((tone) => (
               <option key={tone} value={tone}>{translateEnum(t, 'skinTone', tone)}</option>
@@ -223,7 +328,10 @@ const ModelSetup = ({ variant = 'workspace' }) => {
           className="field-textarea"
           rows="5"
           value={profileForm.bio}
-          onChange={(event) => setProfileForm((current) => ({ ...current, bio: event.target.value }))}
+          onChange={(event) => {
+            profileTouchedRef.current = true;
+            setProfileForm((current) => ({ ...current, bio: event.target.value }));
+          }}
           placeholder={t.modelSetup.bioPlaceholder}
         />
       </label>
@@ -234,7 +342,10 @@ const ModelSetup = ({ variant = 'workspace' }) => {
           className="field-input"
           type="file"
           multiple
-          onChange={(event) => setProfileForm((current) => ({ ...current, files: event.target.files }))}
+          onChange={(event) => {
+            profileTouchedRef.current = true;
+            setProfileForm((current) => ({ ...current, files: event.target.files }));
+          }}
         />
       </label>
     </>
@@ -247,7 +358,10 @@ const ModelSetup = ({ variant = 'workspace' }) => {
         <button
           type="button"
           className="button secondary compact"
-          onClick={() => setAvailabilityRows((current) => [...current, createAvailabilityRow()])}
+          onClick={() => {
+            availabilityTouchedRef.current = true;
+            setAvailabilityRows((current) => [...current, createAvailabilityRow()]);
+          }}
         >
           {t.modelSetup.addAvailability}
         </button>
@@ -261,6 +375,7 @@ const ModelSetup = ({ variant = 'workspace' }) => {
               value={row.availableFor}
               onChange={(event) => {
                 const nextValue = event.target.value;
+                availabilityTouchedRef.current = true;
                 setAvailabilityRows((current) => current.map((item) => (
                   item.key === row.key ? { ...item, availableFor: nextValue } : item
                 )));
@@ -278,6 +393,7 @@ const ModelSetup = ({ variant = 'workspace' }) => {
               value={row.pricePerSession}
               onChange={(event) => {
                 const nextValue = event.target.value;
+                availabilityTouchedRef.current = true;
                 setAvailabilityRows((current) => current.map((item) => (
                   item.key === row.key ? { ...item, pricePerSession: nextValue } : item
                 )));
@@ -287,7 +403,10 @@ const ModelSetup = ({ variant = 'workspace' }) => {
             <button
               type="button"
               className="button ghost compact"
-              onClick={() => setAvailabilityRows((current) => current.filter((item) => item.key !== row.key))}
+              onClick={() => {
+                availabilityTouchedRef.current = true;
+                setAvailabilityRows((current) => current.filter((item) => item.key !== row.key));
+              }}
               disabled={availabilityRows.length === 1}
             >
               {t.modelSetup.removeAvailability}
@@ -304,25 +423,27 @@ const ModelSetup = ({ variant = 'workspace' }) => {
         <h2>{t.modelSetup.cachedProfile}</h2>
       </div>
 
-      {!cachedProfile ? (
+      {syncingProfile && !profileSnapshot ? (
+        <LoadingState label={t.common.loading} />
+      ) : !profileSnapshot ? (
         <EmptyState title={t.common.noData} />
       ) : (
         <div className="summary-grid">
           <div className="simple-stat-row">
             <span>{t.common.email}</span>
-            <strong>{cachedProfile.modelEmail || user?.email || '--'}</strong>
+            <strong>{profileSnapshot.modelEmail || user?.email || '--'}</strong>
           </div>
           <div className="simple-stat-row">
             <span>ID</span>
-            <strong>{cachedProfile.modelId || '--'}</strong>
+            <strong>{profileSnapshot.modelId || '--'}</strong>
           </div>
           <div className="simple-stat-row">
             <span>{t.modelSetup.bodyType}</span>
-            <strong>{translateEnum(t, 'bodyType', cachedProfile.bodyType)}</strong>
+            <strong>{translateEnum(t, 'bodyType', profileSnapshot.bodyType)}</strong>
           </div>
           <div className="simple-stat-row">
             <span>{t.modelSetup.skinTone}</span>
-            <strong>{translateEnum(t, 'skinTone', cachedProfile.skinTone)}</strong>
+            <strong>{translateEnum(t, 'skinTone', profileSnapshot.skinTone)}</strong>
           </div>
         </div>
       )}
@@ -333,10 +454,7 @@ const ModelSetup = ({ variant = 'workspace' }) => {
     return (
       <div className="standalone-page onboarding-page">
         <div className="standalone-head">
-          <div>
-            <p className="section-eyebrow">{t.common.appName}</p>
-            <strong className="standalone-user">{user?.email || ''}</strong>
-          </div>
+          <BrandLockup title={t.common.appName} subtitle={user?.email || ''} compact />
           <div className="standalone-actions">
             <button type="button" className="topbar-chip" onClick={toggleTheme}>
               {isDark ? t.common.lightMode : t.common.darkMode}

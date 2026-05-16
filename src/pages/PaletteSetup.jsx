@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { CheckIcon } from '../components/Icons';
-import { SectionIntro } from '../components/AppPrimitives';
+import { BrandLockup, SectionIntro } from '../components/AppPrimitives';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../hooks/useLanguage';
@@ -64,10 +64,7 @@ const PaletteSetup = () => {
   return (
     <div className="standalone-page">
       <div className="standalone-head">
-        <div>
-          <p className="section-eyebrow">{t.common.appName}</p>
-          <strong className="standalone-user">{user?.email || ''}</strong>
-        </div>
+        <BrandLockup title={t.common.appName} subtitle={user?.email || ''} compact />
         <div className="standalone-actions">
           <button type="button" className="topbar-chip" onClick={toggleTheme}>
             {isDark ? t.common.lightMode : t.common.darkMode}

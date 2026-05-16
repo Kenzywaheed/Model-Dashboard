@@ -1,6 +1,7 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://ecommerce-app-e6303c36e118.herokuapp.com';
 const OTP_BASE_PATH = '/api/v1/public/otp';
 const AUTH_ME_PATH = '/api/v1/auth/me';
+const MODEL_ME_PATH = '/api/v1/model/me';
 const SESSION_STORAGE_KEY = 'model-dashboard-session';
 const SESSION_UPDATED_EVENT = 'model-dashboard-session-updated';
 const PROFILE_CACHE_KEY = 'model-dashboard-profile-cache';
@@ -289,6 +290,49 @@ export const writeCachedModelProfile = (profile) => {
   localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(profile));
 };
 
+const normalizeAvailableForEntry = (entry = {}) => {
+  const availableFor = String(entry?.availableFor || '').trim().toUpperCase();
+  const pricePerSession = Number(entry?.pricePerSession);
+
+  return {
+    availableFor,
+    pricePerSession: Number.isFinite(pricePerSession) ? pricePerSession : 0,
+  };
+};
+
+export const normalizeModelProfile = (profile = {}) => {
+  const normalizedProfile = profile && typeof profile === 'object' ? profile : {};
+
+  return {
+    ...normalizedProfile,
+    modelId: normalizedProfile.modelId || normalizedProfile.id || '',
+    modelName: normalizedProfile.modelName || normalizedProfile.username || '',
+    modelEmail: String(normalizedProfile.modelEmail || normalizedProfile.email || '').trim().toLowerCase(),
+    bio: normalizedProfile.bio || '',
+    city: normalizedProfile.city || '',
+    age: normalizedProfile.age ?? '',
+    heightCm: normalizedProfile.heightCm ?? '',
+    weightKg: normalizedProfile.weightKg ?? '',
+    hairColor: normalizedProfile.hairColor || '',
+    bodyType: String(normalizedProfile.bodyType || '').trim().toUpperCase() || '',
+    skinTone: String(normalizedProfile.skinTone || '').trim().toUpperCase() || '',
+    gender: String(normalizedProfile.gender || '').trim().toUpperCase() || '',
+    ratingAvg: Number.isFinite(Number(normalizedProfile.ratingAvg)) ? Number(normalizedProfile.ratingAvg) : 0,
+    ratingCount: Number.isFinite(Number(normalizedProfile.ratingCount)) ? Number(normalizedProfile.ratingCount) : 0,
+    isAvailable: typeof normalizedProfile.isAvailable === 'boolean' ? normalizedProfile.isAvailable : true,
+    modelImages: Array.isArray(normalizedProfile.modelImages) ? normalizedProfile.modelImages.filter(Boolean) : [],
+    availableFor: Array.isArray(normalizedProfile.availableFor)
+      ? normalizedProfile.availableFor
+        .filter((entry) => entry && typeof entry === 'object')
+        .map(normalizeAvailableForEntry)
+        .filter((entry) => entry.availableFor)
+      : [],
+    customer: normalizedProfile.customer && typeof normalizedProfile.customer === 'object'
+      ? normalizedProfile.customer
+      : null,
+  };
+};
+
 const isTokenExpired = (token, bufferMs = 15000) => {
   const payload = parseJwtPayload(token);
   const expiresAt = Number(payload?.exp);
@@ -480,6 +524,7 @@ export const authApi = {
 };
 
 export const modelApi = {
+  getMeProfile: () => authorizedRequest(MODEL_ME_PATH).then(normalizeModelProfile),
   createProfile: (payload) => authorizedRequest('/api/v1/model', {
     method: 'POST',
     body: toFormData(payload),

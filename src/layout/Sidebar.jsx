@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { useLanguage } from '../hooks/useLanguage';
+import { BrandLockup } from '../components/AppPrimitives';
 import {
   AgreementIcon,
   DashboardIcon,
@@ -25,11 +26,7 @@ const Sidebar = ({ isOpen, isCollapsed, onClose }) => {
       <div className={`sidebar-overlay ${isOpen ? 'show' : ''}`} onClick={onClose} aria-hidden="true" />
       <aside className={`sidebar ${isOpen ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
         <div className="sidebar-brand">
-          <div className="brand-mark">MD</div>
-          <div className="brand-copy">
-            <strong>{t.common.appName}</strong>
-            <span>{t.common.modelWorkspace}</span>
-          </div>
+          <BrandLockup title={t.common.appName} subtitle={t.common.modelWorkspace} />
           <button type="button" className="icon-button sidebar-close" onClick={onClose}>
             <CloseIcon className="icon-sm" />
           </button>

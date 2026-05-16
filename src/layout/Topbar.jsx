@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../hooks/useLanguage';
-import { modelApi } from '../services/api';
+import { modelApi, readCachedModelProfile } from '../services/api';
 import { BellIcon, GlobeIcon, LogoutIcon, MenuIcon, PanelIcon } from '../components/Icons';
 
 const Topbar = ({ isSidebarCollapsed, onOpenSidebar, onToggleCollapse }) => {
@@ -13,6 +13,9 @@ const Topbar = ({ isSidebarCollapsed, onOpenSidebar, onToggleCollapse }) => {
   const { language, setLanguage, t } = useLanguage();
   const { isDark, toggleTheme } = useTheme();
   const [unreadCount, setUnreadCount] = useState(0);
+  const cachedProfile = readCachedModelProfile();
+  const displayName = cachedProfile?.modelName || user?.name || 'Model User';
+  const displayEmail = cachedProfile?.modelEmail || user?.email || '';
 
   useEffect(() => {
     let active = true;
@@ -88,11 +91,11 @@ const Topbar = ({ isSidebarCollapsed, onOpenSidebar, onToggleCollapse }) => {
 
         <div className="topbar-user">
           <div className="user-avatar">
-            {String(user?.name || user?.email || 'M').charAt(0).toUpperCase()}
+            {String(displayName || displayEmail || 'M').charAt(0).toUpperCase()}
           </div>
           <div className="user-copy">
-            <strong>{user?.name || 'Model User'}</strong>
-            <span>{user?.email || ''}</span>
+            <strong>{displayName}</strong>
+            <span>{displayEmail}</span>
           </div>
         </div>
 

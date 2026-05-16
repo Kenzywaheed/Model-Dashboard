@@ -493,37 +493,62 @@ video {
   padding: 0.6rem 0.5rem 1.2rem;
 }
 
-.brand-mark {
+.brand-lockup {
   display: grid;
-  place-items: center;
-  width: 54px;
-  height: 54px;
-  border-radius: 18px;
-  color: #fff;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  background: linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark));
-  box-shadow: 0 18px 42px -28px rgba(54, 91, 85, 0.95);
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.9rem;
+  min-width: 0;
 }
 
-.brand-copy {
+.brand-logo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  filter: drop-shadow(0 18px 28px rgba(103, 15, 53, 0.18));
+}
+
+.brand-lockup-copy {
   display: grid;
   gap: 0.15rem;
   min-width: 0;
 }
 
-.brand-copy strong {
+.brand-lockup-title {
   font-size: 1rem;
+  line-height: 1.1;
 }
 
-.brand-copy span {
+.brand-lockup-subtitle {
   color: var(--text-muted);
   font-size: 0.88rem;
 }
 
-.dashboard-shell.sidebar-collapsed .brand-copy,
+.brand-lockup.compact .brand-logo {
+  width: 52px;
+  height: 52px;
+}
+
+.brand-lockup.compact .brand-lockup-title {
+  font-size: 0.95rem;
+}
+
+.brand-lockup.compact .brand-lockup-subtitle {
+  font-size: 0.84rem;
+}
+
+.dashboard-shell.sidebar-collapsed .brand-lockup-copy,
 .dashboard-shell.sidebar-collapsed .sidebar-link span {
   display: none;
+}
+
+.dashboard-shell.sidebar-collapsed .sidebar-brand {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.dashboard-shell.sidebar-collapsed .brand-lockup {
+  grid-template-columns: auto;
 }
 
 .sidebar-close {
@@ -1494,5 +1519,9 @@ html[dir='rtl'] .drawer-panel {
   .metric-card,
   .auth-form-card {
     padding: 1rem;
+  }
+
+  .brand-lockup {
+    width: 100%;
   }
 }

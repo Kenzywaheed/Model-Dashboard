@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { BrandLockup } from '../components/AppPrimitives';
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../hooks/useLanguage';
 import { useTheme } from '../context/ThemeContext';
@@ -48,6 +49,11 @@ const routeAuthenticatedUser = (user, navigate) => {
   const homePath = getUserHomePath(user);
 
   if (homePath) {
+    if (homePath === '/onboarding/model-profile') {
+      navigate(homePath, { replace: true });
+      return;
+    }
+
     navigate('/setup/palette', {
       replace: true,
       state: {
@@ -148,7 +154,7 @@ const Login = () => {
         <div className="auth-form-card">
           <div className="auth-header">
             <div>
-              <p className="section-eyebrow">{t.common.appName}</p>
+              <BrandLockup title={t.common.appName} compact />
               <h2 className="auth-card-title">{t.auth.title}</h2>
             </div>
             <div className="auth-header-actions">

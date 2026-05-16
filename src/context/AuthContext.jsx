@@ -189,12 +189,20 @@ export const AuthProvider = ({ children }) => {
 
       const nextUser = normalizeAuthUser(data?.user, { email: normalizedEmail });
 
-      const nextSession = saveSession({
+      const baseSession = saveSession({
         accessToken: data?.accessToken || '',
         refreshToken: data?.refreshToken || '',
         authenticatedAt: new Date().toISOString(),
         user: nextUser,
       });
+
+      let nextSession = baseSession;
+
+      try {
+        nextSession = await hydrateSessionUser(baseSession);
+      } catch {
+        nextSession = baseSession;
+      }
 
       setPendingEmail('');
       setPendingOtpCode('');
@@ -210,7 +218,7 @@ export const AuthProvider = ({ children }) => {
         remainingAttempts: error?.data?.remainingAttempts,
       };
     }
-  }, [saveSession]);
+  }, [hydrateSessionUser, saveSession]);
 
   const value = useMemo(() => ({
     accessToken: session?.accessToken || '',

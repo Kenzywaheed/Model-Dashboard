@@ -1,4 +1,20 @@
 import { CloseIcon } from './Icons';
+import styleHubLogo from '../assets/stylehub-logo.png';
+
+export const BrandLockup = ({
+  title,
+  subtitle,
+  alt = 'StyleHub logo',
+  compact = false,
+}) => (
+  <div className={`brand-lockup ${compact ? 'compact' : ''}`}>
+    <img className="brand-logo" src={styleHubLogo} alt={alt} />
+    <div className="brand-lockup-copy">
+      <strong className="brand-lockup-title">{title}</strong>
+      {subtitle ? <span className="brand-lockup-subtitle">{subtitle}</span> : null}
+    </div>
+  </div>
+);
 
 export const SectionIntro = ({ eyebrow, title, subtitle, actions }) => (
   <section className="section-intro">

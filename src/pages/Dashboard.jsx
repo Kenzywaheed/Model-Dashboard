@@ -8,7 +8,7 @@ import {
   SectionIntro,
   StatusBadge,
 } from '../components/AppPrimitives';
-import { modelApi, normalizePaginatedResponse, readCachedModelProfile } from '../services/api';
+import { modelApi, normalizePaginatedResponse, readCachedModelProfile, writeCachedModelProfile } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { formatDateTime, formatNumber, translateEnum } from '../utils/formatters';
 import { useLanguage } from '../hooks/useLanguage';
@@ -24,21 +24,31 @@ const Dashboard = () => {
     reviews: [],
     reviewStats: null,
     notificationStats: null,
+    modelProfile: readCachedModelProfile(),
   });
-
-  const cachedProfile = readCachedModelProfile();
 
   const loadDashboard = async () => {
     setState((current) => ({ ...current, loading: true, error: '' }));
 
     try {
-      const [requestsRaw, agreementsRaw, reviewsRaw, reviewStats, notificationStats] = await Promise.all([
+      const [requestsRaw, agreementsRaw, reviewsRaw, reviewStats, notificationStats, modelProfile] = await Promise.all([
         modelApi.getRequests({ page: 0, size: 4, status: '' }),
         modelApi.getAgreements({ page: 0, size: 4, status: '' }),
         modelApi.getReviews({ page: 0, size: 4 }),
         modelApi.getReviewStats(),
         modelApi.getNotificationStats(),
+        modelApi.getMeProfile().catch((profileError) => {
+          if (profileError?.status === 404) {
+            return null;
+          }
+
+          throw profileError;
+        }),
       ]);
+
+      if (modelProfile) {
+        writeCachedModelProfile(modelProfile);
+      }
 
       setState({
         loading: false,
@@ -48,6 +58,7 @@ const Dashboard = () => {
         reviews: normalizePaginatedResponse(reviewsRaw, { fallbackPage: 0, fallbackSize: 4 }).items,
         reviewStats,
         notificationStats,
+        modelProfile,
       });
     } catch (error) {
       setState((current) => ({
@@ -65,14 +76,15 @@ const Dashboard = () => {
   const metrics = useMemo(() => {
     const pendingRequests = state.requests.filter((item) => item.requestStatus === 'PENDING').length;
     const activeAgreements = state.agreements.filter((item) => !['COMPLETED', 'CANCELLED'].includes(item.agreementStatus)).length;
+    const ratingAvg = state.reviewStats?.ratingAvg ?? state.modelProfile?.ratingAvg ?? 0;
 
     return [
       { label: t.dashboard.pendingRequests, value: pendingRequests },
       { label: t.dashboard.activeAgreements, value: activeAgreements },
-      { label: t.dashboard.averageRating, value: formatNumber(state.reviewStats?.ratingAvg || 0, language) },
+      { label: t.dashboard.averageRating, value: formatNumber(ratingAvg, language) },
       { label: t.dashboard.unreadNotifications, value: formatNumber(state.notificationStats?.unread || 0, language) },
     ];
-  }, [language, state.agreements, state.notificationStats?.unread, state.requests, state.reviewStats?.ratingAvg, t.dashboard]);
+  }, [language, state.agreements, state.modelProfile?.ratingAvg, state.notificationStats?.unread, state.requests, state.reviewStats?.ratingAvg, t.dashboard]);
 
   const reviewBreakdown = [
     { stars: 5, count: state.reviewStats?.fiveStarCount || 0 },
@@ -83,6 +95,8 @@ const Dashboard = () => {
   ];
 
   const typeBreakdown = state.notificationStats?.countsByType || [];
+  const ratingAvg = state.reviewStats?.ratingAvg ?? state.modelProfile?.ratingAvg ?? 0;
+  const ratingCount = state.reviewStats?.ratingCount ?? state.modelProfile?.ratingCount ?? 0;
 
   return (
     <div className="page-stack">
@@ -192,17 +206,17 @@ const Dashboard = () => {
 
           {state.loading ? <LoadingState label={t.common.loading} /> : null}
 
-          {!state.loading && !state.reviewStats?.ratingCount ? (
+          {!state.loading && !ratingCount ? (
             <EmptyState title={t.dashboard.noReviews} />
           ) : null}
 
           <div className="rating-summary">
             <div className="rating-pill">
-              <strong>{formatNumber(state.reviewStats?.ratingAvg || 0, language)}</strong>
+              <strong>{formatNumber(ratingAvg, language)}</strong>
               <span>{t.common.average}</span>
             </div>
             <div className="rating-pill soft">
-              <strong>{formatNumber(state.reviewStats?.ratingCount || 0, language)}</strong>
+              <strong>{formatNumber(ratingCount, language)}</strong>
               <span>{t.common.total}</span>
             </div>
           </div>
@@ -248,7 +262,7 @@ const Dashboard = () => {
         </article>
       </section>
 
-      {!user?.hasModelProfile && !cachedProfile ? (
+      {!user?.hasModelProfile && !state.modelProfile ? (
         <article className="cta-card">
           <div>
             <p className="section-eyebrow">{t.modelSetup.eyebrow}</p>
