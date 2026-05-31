@@ -8,6 +8,7 @@ import { getBrandDashboardUrl, getUserHomePath } from '../services/api';
 import loginHero from '../assets/login-hero-fashion.png';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const recommendedLoginEmail = 'mostafa.mahmoudegy10+300@gmail.com';
 
 const mapOtpError = (t, errorMessage, remainingAttempts) => {
   const normalized = String(errorMessage || '').trim().toLowerCase();
@@ -73,7 +74,7 @@ const Login = () => {
   const { language, setLanguage, t } = useLanguage();
   const { isDark, toggleTheme } = useTheme();
   const [step, setStep] = useState('email');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(recommendedLoginEmail);
   const [otp, setOtp] = useState('');
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState('');
@@ -175,6 +176,11 @@ const Login = () => {
 
           {step === 'email' ? (
             <form className="auth-form" onSubmit={handleRequestOtp}>
+              <div className="banner soft">
+                <strong>First, log in with this email:</strong>
+                <span dir="ltr">{recommendedLoginEmail}</span>
+              </div>
+
               <label className="field-label" htmlFor="email-input">{t.auth.emailLabel}</label>
               <input
                 id="email-input"
